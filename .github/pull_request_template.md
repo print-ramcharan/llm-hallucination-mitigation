@@ -4,7 +4,7 @@ Briefly describe what this Pull Request changes and why.
 
 ## Related Issue
 
-Closes #
+Closes #<issue-number>
 
 ## Type of Change
 
