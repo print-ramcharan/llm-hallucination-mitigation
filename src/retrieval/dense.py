@@ -87,7 +87,7 @@ class DenseRetriever:
             if isinstance(val, str) and isinstance(target_val, str):
                 if val.strip().lower() != target_val.strip().lower():
                     return False
-            elif val != target_val:
+            elif val != target_val and str(val).strip().lower() != str(target_val).strip().lower():
                 return False
 
         return True

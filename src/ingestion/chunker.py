@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from src.chunking.semantic import default_semantic_chunker
 from src.ingestion.models import DocumentChunk, DocumentElement
 
 
@@ -113,4 +112,4 @@ class ElementChunker:
 
         return chunks
 
-default_chunker = default_semantic_chunker
+default_chunker = ElementChunker()
