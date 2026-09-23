@@ -13,7 +13,7 @@ import {
   fetchDocuments,
 } from "@/lib/api";
 import { Document, DocumentMetadata, HealthStatus } from "@/types/ingestion";
-import { Sparkles, BookCheck } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default function IngestionPage() {
   const [backendHealth, setBackendHealth] = useState<HealthStatus | null>(null);
@@ -97,8 +97,8 @@ export default function IngestionPage() {
     setSelectedDoc(doc);
     setToast({
       id: String(Date.now()),
-      title: "Backend Indexing Complete",
-      description: `L2-normalized embeddings generated. FAISS Vector Index, BM25 Index, and Metadata Store updated (${doc.chunks?.length || 0} chunks indexed).`,
+      title: "Document Ingested",
+      description: `Document processed successfully with ${doc.chunks?.length || 0} chunks ready for retrieval.`,
       type: "success",
     });
   };
@@ -118,8 +118,8 @@ export default function IngestionPage() {
       }
       setToast({
         id: String(Date.now()),
-        title: "Document Unindexed",
-        description: `Removed document ${docId} and cleaned entries from FAISS, BM25, and Metadata Store.`,
+        title: "Document Removed",
+        description: `The document has been removed from the repository.`,
         type: "info",
       });
     } catch (err) {
@@ -137,28 +137,19 @@ export default function IngestionPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* Page Hero Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-900 pb-6">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-900 pb-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2.5">
               <Sparkles className="h-3.5 w-3.5" />
-              Stage 1: Multi-Format Document Ingestion Engine
+              Document Knowledge Base
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Document Ingestion & Unified Schema
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Documents & Metadata
             </h1>
-            <p className="mt-2 text-sm text-slate-400 max-w-2xl leading-relaxed">
-              Upload PDF, DOCX, TXT, MD, or HTML files. The ingestion engine standardizes
-              heterogeneous documents, tracking structural metadata: chunks generated,
-              page boundaries, block composition, and the canonical <code className="text-indigo-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">Document</code> schema.
+            <p className="mt-1.5 text-sm text-slate-400 max-w-2xl leading-relaxed">
+              Upload and manage reference documents. View document briefs, key metadata, and chunk breakdowns.
             </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300 flex items-center gap-2">
-              <BookCheck className="h-4 w-4 text-emerald-400" />
-              <span>Standard: Common Document Object v1.0</span>
-            </div>
           </div>
         </div>
 

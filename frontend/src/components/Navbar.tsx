@@ -30,7 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({ backendHealth, healthError }) =>
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Universal Document Ingestion & Canonical Object Normalization
+              Document Knowledge Base & Context Retrieval
             </p>
           </div>
         </div>

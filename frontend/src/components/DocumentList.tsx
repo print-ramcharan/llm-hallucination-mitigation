@@ -146,14 +146,18 @@ export const DocumentList: React.FC<DocumentListProps> = ({
                   </button>
                 </div>
 
-                {/* Metadata Row: Chunks, Blocks, Pages */}
-                <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+                {/* Metadata Row: Chunks, Words, Pages */}
+                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-indigo-400">{chunkCount} chunks</span>
                     <span>•</span>
-                    <span>{doc.element_count} blocks</span>
-                    <span>•</span>
                     <span>{pageCount} {pageCount === 1 ? "page" : "pages"}</span>
+                    {doc.word_count > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>{doc.word_count.toLocaleString()} words</span>
+                      </>
+                    )}
                   </div>
                   <span className="text-slate-500">{formatBytes(doc.file_size_bytes)}</span>
                 </div>

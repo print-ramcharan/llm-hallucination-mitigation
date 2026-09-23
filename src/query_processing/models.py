@@ -12,6 +12,7 @@ class QueryIntent(str, Enum):
     """Classification of user query intent."""
 
     INFORMATIONAL = "informational"
+    FACTUAL = "factual"
     COMPARISON = "comparison"
     SUMMARY = "summary"
     EXPLORATORY = "exploratory"

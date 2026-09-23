@@ -113,10 +113,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onIngestSuccess }) => {
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <UploadCloud className="h-5 w-5 text-indigo-400" />
-            Document Ingestion Engine
+            Upload Document
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Parses heterogeneous formats into a standardized, structured Document schema.
+            Add documents or paste text to extract metadata and generate retrieval chunks.
           </p>
         </div>
 
@@ -185,10 +185,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onIngestSuccess }) => {
               <div className="flex flex-col items-center gap-3 py-4">
                 <Loader2 className="h-10 w-10 text-indigo-400 animate-spin" />
                 <p className="text-sm font-medium text-slate-200">
-                  Ingesting, embedding & indexing document...
+                  Processing document and preparing chunks...
                 </p>
-                <p className="text-xs text-slate-500">
-                  Cleaning • Semantic Chunking • Sentence-Transformers • FAISS • BM25 • Metadata Store
+                <p className="text-xs text-slate-400">
+                  Extracting text, computing metadata, and indexing for retrieval
                 </p>
               </div>
             ) : (
@@ -202,7 +202,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onIngestSuccess }) => {
                     <span className="text-indigo-400 underline underline-offset-4">browse</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Automatic parser dispatch for PDF, DOCX, TXT, MD, HTML
+                    Supports PDF, DOCX, TXT, Markdown, and HTML
                   </p>
                 </div>
               </div>
