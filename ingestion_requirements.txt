@@ -1,0 +1,129 @@
+================================================================================
+INGESTION MODULE SPECIFICATIONS & REQUIREMENTS
+Project: Mitigating Hallucination and Context Degradation in LLMs
+================================================================================
+
+1. OVERVIEW & OBJECTIVE
+--------------------------------------------------------------------------------
+The Ingestion Module is the foundational entry point of the pipeline.
+Its primary objective is to ingest heterogeneous document formats (PDF, DOCX, 
+TXT, MD, HTML), perform robust text extraction, normalization, and structural 
+decomposition, and produce a standardized, immutable, and rich "Document" object.
+
+This common Document object serves as the single source of truth for all downstream 
+components: chunking, hybrid retrieval (Dense + BM25), reranking, and context 
+optimization.
+
+
+2. SUPPORTED DOCUMENT FORMATS
+--------------------------------------------------------------------------------
+The parser engine must natively support:
+  - PDF (.pdf): Multi-page portable document format, extracting page boundaries, 
+    blocks, and metadata.
+  - Word Document (.docx): Microsoft Word documents, extracting headings, paragraphs, 
+    and structured text.
+  - Plain Text (.txt): Raw text files with multi-encoding fallback (UTF-8, UTF-16, 
+    Latin-1, CP1252).
+  - Markdown (.md): Structured markdown files, preserving hierarchy (H1-H6) and code 
+    blocks while extracting clean text.
+  - HTML (.html, .htm): Web pages and HTML documents, stripping boilerplates, 
+    scripts, and styles while preserving headings and semantic body text.
+  - Extensible Registry: Pluggable parser architecture allowing new formats to be 
+    added with zero modification to core logic.
+
+
+3. COMMON DOCUMENT OBJECT SCHEMA
+--------------------------------------------------------------------------------
+The standardized Document output must conform to the following schema:
+
+A. DocumentElement (Granular block level)
+   - id: str (e.g., "doc_hash_el_0")
+   - element_type: str ("paragraph", "heading", "page", "table", "code")
+   - content: str (extracted text of this element)
+   - page_number: Optional[int] (1-indexed page number if applicable)
+   - section_title: Optional[str] (closest parent heading if applicable)
+   - char_count: int
+   - token_count: Optional[int]
+   - metadata: Dict[str, Any] (custom attributes)
+
+B. DocumentMetadata (Document-level metadata)
+   - document_id: str (deterministic SHA-256 hash of content or UUID)
+   - source_name: str (original file name or source label)
+   - file_type: str ("pdf", "docx", "txt", "md", "html")
+   - file_size_bytes: int
+   - content_hash: str (SHA-256 hash of extracted text)
+   - char_count: int
+   - word_count: int
+   - element_count: int
+   - page_count: Optional[int]
+   - created_at: str (ISO-8601 UTC timestamp)
+   - extra: Dict[str, Any] (format-specific metadata, e.g. PDF author/title)
+
+C. Document (Root unified entity)
+   - id: str (same as metadata.document_id)
+   - content: str (consolidated normalized text content)
+   - metadata: DocumentMetadata
+   - elements: List[DocumentElement] (structured breakdown for downstream chunking)
+
+
+4. PARSER ARCHITECTURE & EXTENSIBILITY
+--------------------------------------------------------------------------------
+- BaseParser (Abstract Base Class):
+  - can_parse(extension: str, mime_type: Optional[str]) -> bool
+  - parse_bytes(content: bytes, filename: str, **kwargs) -> Document
+  - parse_file(file_path: Union[str, Path]) -> Document
+- Concrete Parsers:
+  - PDFParser: Powered by PyMuPDF (fitz) for fast and precise page-by-page and 
+    block-level extraction.
+  - DocxParser: Powered by python-docx, segmenting by heading levels and paragraph blocks.
+  - TxtParser: Character encoding detection and newline normalization.
+  - MarkdownParser: Markdown AST parsing with section preservation.
+  - HtmlParser: Powered by BeautifulSoup4, extracting semantic text while removing 
+    scripts, styles, headers, and navigation tags.
+- ParserRegistry:
+  - Factory pattern providing O(1) parser lookup by file extension or MIME type.
+  - Handles fallback for unknown extensions with clean validation errors.
+
+
+5. BACKEND API SPECIFICATIONS (FastAPI)
+--------------------------------------------------------------------------------
+The backend server must provide the following RESTful endpoints:
+  - POST /api/ingest/upload:
+      Accepts multipart/form-data file upload (PDF, DOCX, TXT, MD, HTML).
+      Parses file into a common Document object, stores it in in-memory/disk store, 
+      and returns Document JSON.
+  - POST /api/ingest/text:
+      Accepts raw text payload {"title": str, "content": str, "format": "txt"|"md"|"html"}.
+      Produces and saves common Document object.
+  - GET /api/ingest/documents:
+      Returns list of all ingested documents with metadata summaries.
+  - GET /api/ingest/documents/{doc_id}:
+      Returns full Document object with full text, elements, and metadata.
+  - DELETE /api/ingest/documents/{doc_id}:
+      Deletes document from repository.
+  - GET /api/health:
+      Returns service status and supported document types.
+  - CORS middleware configured for frontend communication.
+
+
+6. FRONTEND UI SPECIFICATIONS (Next.js + Tailwind CSS)
+--------------------------------------------------------------------------------
+The frontend must provide an intuitive, responsive research-grade interface:
+  - Drag-and-Drop Ingestion Zone:
+      Supports dragging any supported file (PDF, DOCX, TXT, MD, HTML).
+      Visual format tags indicating supported extensions.
+      Option to paste raw text/markdown directly.
+  - Ingestion Management Dashboard:
+      List of ingested documents showing filename, format badge, size, page/section 
+      count, word count, and timestamp.
+      Delete and refresh actions.
+  - Deep Document Inspector:
+      Interactive view of the selected document.
+      Tabs:
+        1. Cleaned Text: Full extracted text with word count and stats.
+        2. Structured Elements: Element-by-element view (pages, headings, paragraphs) 
+           with page numbers and badges.
+        3. Standardized Schema (JSON): Live inspector showing the exact common 
+           Document object schema.
+  - Real-time feedback:
+      Upload progress, parsing status indicator, and error notifications.
