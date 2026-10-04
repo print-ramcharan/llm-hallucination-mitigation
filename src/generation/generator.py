@@ -11,7 +11,6 @@ from src.context.models import CompactedEvidence, OptimizedContext
 from src.generation.engine import (
     BaseInferenceEngine,
     EngineFactory,
-    OpenAICompatibleEngine,
     default_inference_engine,
 )
 from src.generation.models import (
@@ -252,7 +251,7 @@ class GroundedGenerator:
 
         doc_context = (document_text or "").strip()
 
-        if isinstance(engine, OpenAICompatibleEngine):
+        if getattr(engine, "is_configured", lambda: True)():
             system_prompt = (
                 "You are an AI assistant. You are provided with the entire raw document content and a user query. "
                 "Answer the user's question directly based on the raw document text. "
@@ -263,12 +262,15 @@ class GroundedGenerator:
                 f"USER QUERY: {query}\n\n"
                 f"ANSWER:"
             )
-            raw_answer = engine.generate(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                temperature=0.0,
-                max_tokens=1024,
-            )
+            try:
+                raw_answer = engine.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=0.0,
+                    max_tokens=1024,
+                )
+            except Exception:
+                raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)
         else:
             # Offline naive baseline: processes the entire un-chunked document text directly
             raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)

@@ -109,6 +109,20 @@ class FilterExtractor:
         if "year" in filters:
             q = re.sub(r"\b" + str(filters["year"]) + r"\b", "", q)
 
+        # Remove trailing document reference noise (e.g. "mentioned in the document", "in the text")
+        q = re.sub(
+            r"\s+(?:mentioned\s+in|stated\s+in|listed\s+in|given\s+in|described\s+in|found\s+in)\s+(?:the\s+)?(?:document|doc|file|text|passage|paper|pdf|docx)s?$",
+            "",
+            q,
+            flags=re.IGNORECASE,
+        )
+        q = re.sub(
+            r"\s+in\s+(?:the\s+)?(?:document|doc|file|text|passage|paper|pdf|docx)s?$",
+            "",
+            q,
+            flags=re.IGNORECASE,
+        )
+
         # Remove question conversational prefixes
         q = re.sub(r"^(?:what\s+(?:is|was|are|were)|tell\s+me\s+about|how\s+does|how\s+do)\s+(?:our\s+|the\s+)?", "", q, flags=re.IGNORECASE)
         q = re.sub(r"^what\s+does\s+the\s+", "", q, flags=re.IGNORECASE)

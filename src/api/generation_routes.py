@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import time
 from typing import Any
 
 from fastapi import APIRouter, status
@@ -273,6 +275,165 @@ def compare_naive_vs_grounded(payload: FullQAPipelineRequest) -> ComparisonRespo
     )
 
 
+@router.post(
+    "/compare/stream",
+    status_code=status.HTTP_200_OK,
+    summary="Stream Real-Time Side-by-Side Comparison: Naive LLM vs Grounded Mitigation Pipeline",
+)
+def stream_compare_pipeline(payload: FullQAPipelineRequest) -> StreamingResponse:
+    """Stream end-to-end question answering comparison with live token streaming and guardrail telemetry."""
+
+    def event_stream():
+        start_time = time.perf_counter()
+        try:
+            # Stage 1: Retrieval
+            yield f"event: stage\ndata: {json.dumps({'stage': 'retrieval', 'message': 'Executing Hybrid Retrieval (FAISS Dense + BM25 Sparse + RRF)...'})}\n\n"
+            retrieval_res = default_hybrid_retriever.retrieve(
+                query=payload.query,
+                conversation_history=payload.conversation_history,
+                filters=payload.filters,
+                top_k_fused=payload.top_k_fused,
+            )
+
+            # Stage 2: Cross-Encoder Rerank
+            yield f"event: stage\ndata: {json.dumps({'stage': 'rerank', 'message': f'Cross-Encoder reranking {len(retrieval_res.candidates)} candidates and pruning unanchored noise...'})}\n\n"
+            ranked_context = default_reranker.rerank_retrieval_response(
+                response=retrieval_res,
+                threshold=payload.rerank_threshold,
+                top_n=payload.rerank_top_n,
+            )
+
+            # Stage 3: Extractive Compaction & Reordering
+            yield f"event: stage\ndata: {json.dumps({'stage': 'compaction', 'message': 'Compacting context to budget and mitigating Lost-in-the-Middle...'})}\n\n"
+            compacted_context = default_context_compactor.compact(
+                query=payload.query,
+                chunks=ranked_context.chunks,
+                max_token_budget=payload.max_token_budget,
+            )
+
+            # Stage 4: Sufficiency Gate
+            yield f"event: stage\ndata: {json.dumps({'stage': 'sufficiency', 'message': 'Evaluating evidence sufficiency gate...'})}\n\n"
+            sufficiency = default_grounded_generator.sufficiency_classifier.assess_sufficiency(
+                query=payload.query,
+                context=compacted_context,
+                threshold=payload.sufficiency_threshold,
+            )
+            yield f"event: sufficiency\ndata: {json.dumps(sufficiency.model_dump())}\n\n"
+
+            # Memory context if applicable
+            memory_context_str = None
+            if payload.session_id:
+                from src.memory.synchronizer import default_memory_synchronizer
+
+                sync_ctx = default_memory_synchronizer.pre_inference_sync(
+                    query=payload.query,
+                    session_id=payload.session_id,
+                )
+                if sync_ctx.read_enabled and sync_ctx.formatted_memory_context:
+                    memory_context_str = sync_ctx.formatted_memory_context
+
+            # Stage 5: Grounded Inference Streaming
+            from src.generation.engine import EngineFactory
+
+            engine = EngineFactory.create_engine(payload.provider) if payload.provider else default_grounded_generator.engine
+
+            yield f"event: stage\ndata: {json.dumps({'stage': 'generation', 'message': f'Streaming grounded response via {engine.model_name}...'})}\n\n"
+            yield f"event: provider\ndata: {json.dumps({'model': engine.model_name, 'provider': getattr(engine, 'last_used_name', 'Auto-Fallback')})}\n\n"
+
+            grounded_answer_chunks = []
+            if not sufficiency.is_sufficient:
+                abstention_text = sufficiency.abstention_message or (
+                    f"The available documents do not contain sufficient evidence to verify {sufficiency.topic}."
+                )
+                grounded_answer_chunks.append(abstention_text)
+                yield f"event: abstention\ndata: {json.dumps({'answer': abstention_text, 'reason': sufficiency.reasoning})}\n\n"
+            else:
+                prompt = default_grounded_generator.prompt_synthesizer.synthesize_prompt(
+                    query=payload.query,
+                    context=compacted_context,
+                    conversation_history=payload.conversation_history,
+                    memory_context=memory_context_str,
+                )
+                for token in engine.generate_stream(
+                    prompt=prompt,
+                    system_prompt=default_grounded_generator.prompt_synthesizer.system_prompt,
+                    temperature=payload.temperature,
+                    max_tokens=payload.max_tokens,
+                ):
+                    grounded_answer_chunks.append(token)
+                    yield f"event: token\ndata: {json.dumps({'token': token})}\n\n"
+
+            full_grounded_answer = "".join(grounded_answer_chunks)
+
+            # Stage 6: Post-generation NLI Verification
+            yield f"event: stage\ndata: {json.dumps({'stage': 'verification', 'message': 'Verifying grounded claims with sentence-level NLI...'})}\n\n"
+            grounding_report = default_grounded_generator.verifier.verify_answer(
+                answer=full_grounded_answer,
+                context=compacted_context,
+                tolerance=payload.hallucination_threshold,
+            )
+            citations = default_grounded_generator.verifier.extract_citations(full_grounded_answer)
+            yield f"event: grounding\ndata: {json.dumps(grounding_report.model_dump())}\n\n"
+
+            # Stage 7: Naive Baseline LLM Generation
+            yield f"event: stage\ndata: {json.dumps({'stage': 'naive', 'message': 'Evaluating Naive LLM monolithic baseline...'})}\n\n"
+            from src.ingestion.store import default_store
+
+            entire_document_text = ""
+            if payload.filters and "document_id" in payload.filters:
+                doc = default_store.get(payload.filters["document_id"])
+                if doc and doc.content:
+                    entire_document_text = doc.content
+            if not entire_document_text:
+                all_docs = default_store.list_all_documents()
+                if all_docs:
+                    entire_document_text = "\n\n".join(d.content for d in all_docs if d.content)
+
+            naive_res = default_grounded_generator.generate_naive(
+                query=payload.query,
+                document_text=entire_document_text,
+                provider=payload.provider,
+            )
+            yield f"event: naive\ndata: {json.dumps(naive_res.model_dump())}\n\n"
+
+            # Assemble Metrics Comparison
+            metrics_comp = {
+                "naive_citations_count": len(naive_res.citations),
+                "grounded_citations_count": len(citations),
+                "naive_faithfulness": "Unverified (0% anchored)",
+                "grounded_faithfulness": f"{round(grounding_report.faithfulness_score * 100)}% verified",
+                "naive_sufficiency_gate": "Disabled (Blind Generation)",
+                "grounded_sufficiency_gate": (
+                    f"{'Sufficient' if sufficiency.is_sufficient else 'Abstained'} "
+                    f"({round(sufficiency.sufficiency_score * 100)}%)"
+                ),
+                "naive_nli_claims": "0 claims verified",
+                "grounded_nli_claims": (
+                    f"{grounding_report.total_claims} verified "
+                    f"({grounding_report.entailed_claims_count} entailed, "
+                    f"{grounding_report.neutral_claims_count} neutral, "
+                    f"{grounding_report.contradicted_claims_count} contradicted)"
+                ),
+            }
+
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            yield f"event: done\ndata: {json.dumps({'model': getattr(engine, 'model_name', 'Auto-Fallback'), 'provider': getattr(engine, 'last_used_name', 'Auto-Fallback'), 'citations': citations, 'latency_ms': latency_ms, 'metrics_comparison': metrics_comp})}\n\n"
+        except Exception as exc:
+            logger.error(f"[stream_compare_pipeline] Stream failed with error: {exc}", exc_info=True)
+            yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
 @router.get(
     "/status",
     status_code=status.HTTP_200_OK,
@@ -289,3 +450,5 @@ def get_generation_status() -> dict[str, Any]:
         "abstention_protocol": "enabled",
         "nli_verification": "sentence-level",
     }
+
+

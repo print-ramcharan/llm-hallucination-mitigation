@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-# Common stop words to exclude when calculating query term relevance
+# Common stop words and document-framing meta words to exclude
 _STOP_WORDS = {
     "a", "an", "the", "and", "or", "but", "if", "then", "of", "at",
     "by", "for", "with", "about", "against", "between", "into", "through",
@@ -17,6 +17,40 @@ _STOP_WORDS = {
     "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
     "did", "doing", "i", "me", "my", "we", "our", "you", "your", "he", "him",
     "his", "she", "her", "it", "its", "they", "them", "their", "what", "which",
+    # Document framing / meta terms
+    "document", "documents", "doc", "docs", "file", "files",
+    "text", "texts", "article", "articles", "paper", "papers",
+    "passage", "passages", "content", "contents", "context", "contexts",
+    "mention", "mentions", "mentioned", "mentioning",
+    "give", "given", "provide", "provided", "state", "stated", "states",
+    "tell", "told", "say", "said", "says", "list", "listed", "lists",
+    "show", "shows", "describe", "describes", "explain", "explains",
+}
+
+_SEMANTIC_SYNONYMS: dict[str, set[str]] = {
+    "skill": {
+        "qualification", "qualifications", "requirement", "requirements",
+        "competency", "competencies", "proficiency", "proficiencies",
+        "ability", "abilities", "knowledge", "fundamentals", "expertise",
+        "experience", "programming", "technology", "technologies", "tools",
+        "python", "sql", "engineering", "responsibilities", "duties",
+    },
+    "skills": {
+        "qualification", "qualifications", "requirement", "requirements",
+        "competency", "competencies", "proficiency", "proficiencies",
+        "ability", "abilities", "knowledge", "fundamentals", "expertise",
+        "experience", "programming", "technology", "technologies", "tools",
+        "python", "sql", "engineering", "responsibilities", "duties",
+    },
+    "qualification": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education"},
+    "qualifications": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education"},
+    "responsibility": {"duties", "tasks", "role", "work", "responsibilities", "solutions", "develop", "build"},
+    "responsibilities": {"duties", "tasks", "role", "work", "responsibility", "solutions", "develop", "build"},
+    "salary": {"compensation", "pay", "rate", "wage", "wages", "stipend", "remuneration", "benefits"},
+    "leave": {"vacation", "pto", "holiday", "holidays", "absence", "time off"},
+    "vacation": {"leave", "pto", "holiday", "holidays", "absence", "time off"},
+    "benefit": {"perk", "perks", "insurance", "401k", "pension", "health", "dental"},
+    "benefits": {"perk", "perks", "insurance", "401k", "pension", "health", "dental"},
 }
 
 _SENTENCE_SPLIT_REGEX = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"\'\(\[])")
@@ -58,7 +92,7 @@ class SentencePruner:
         """Compute the informational salience score of a sentence relative to the query.
 
         Combines:
-          1. Query term overlap ratio (recall of query keywords)
+          1. Query term and synonym overlap ratio
           2. Specific factual token density (numbers, currencies, percentages, dates)
         """
         if not query_terms or not sentence.strip():
@@ -68,12 +102,21 @@ class SentencePruner:
         if not sentence_terms:
             return 0.0
 
-        # Term overlap
+        # Direct term overlap
         shared_terms = query_terms.intersection(sentence_terms)
+
+        # Semantic synonym & stem expansion check
+        if not shared_terms:
+            for qt in query_terms:
+                stem = qt.rstrip("s").rstrip("es")
+                syns = _SEMANTIC_SYNONYMS.get(qt, set()) | _SEMANTIC_SYNONYMS.get(stem, set())
+                matched_syns = syns.intersection(sentence_terms)
+                if matched_syns or any(st.startswith(stem) for st in sentence_terms if len(stem) >= 4):
+                    shared_terms.add(qt)
+
         term_overlap = len(shared_terms) / max(len(query_terms), 1)
 
         # Factual density boost (digits, currency, percentages, e.g. "20 days", "$500")
-        # Only boost factual density if the sentence shares topical terms with the query!
         density_boost = 0.0
         if shared_terms:
             has_digits = bool(re.search(r"\b\d+\b", sentence))
@@ -124,10 +167,16 @@ class SentencePruner:
         # Filter sentences by salience threshold
         kept: list[str] = [s for s, score in scored_sentences if score >= threshold]
 
-        # Fallback preservation: If all sentences fell below threshold, keep top-scoring sentence
+        # Fallback preservation: If no sentence met threshold
         if not kept:
-            best_sentence = max(scored_sentences, key=lambda item: item[1])[0]
-            kept = [best_sentence]
+            # First preference: sentences with positive salience
+            positive_sentences = [s for s, score in scored_sentences if score > 0]
+            if positive_sentences:
+                kept = positive_sentences
+            else:
+                # If all scored 0 (e.g. semantic conceptual query), retain full sentences
+                # so crucial domain context is never discarded
+                kept = sentences
 
         compacted = " ".join(kept)
         return compacted, kept

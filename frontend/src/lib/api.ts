@@ -155,15 +155,23 @@ export async function submitQuestionComparison(
   if (documentId && documentId !== "all") {
     payload.filters = { document_id: documentId };
   }
-  if (provider && provider !== "offline") {
+  if (provider && provider !== "fallback") {
     payload.provider = provider;
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/generate/compare`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/generate/compare`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      `Cannot connect to backend server at ${API_BASE_URL}. Ensure uvicorn is running: uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload`
+    );
+  }
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(
@@ -171,6 +179,112 @@ export async function submitQuestionComparison(
     );
   }
   return res.json();
+}
+
+export interface StreamCompareCallbacks {
+  onStage?: (stage: string, message: string) => void;
+  onProvider?: (model: string, provider: string) => void;
+  onSufficiency?: (sufficiency: any) => void;
+  onAbstention?: (abstention: { answer: string; reason?: string }) => void;
+  onToken?: (token: string) => void;
+  onGrounding?: (report: any) => void;
+  onNaive?: (naive: any) => void;
+  onDone?: (data: {
+    model: string;
+    provider: string;
+    citations: string[];
+    latency_ms: number;
+    metrics_comparison: Record<string, any>;
+  }) => void;
+}
+
+export async function streamQuestionComparison(
+  query: string,
+  sessionId?: string,
+  documentId?: string,
+  callbacks?: StreamCompareCallbacks,
+  signal?: AbortSignal
+): Promise<void> {
+  const payload: {
+    query: string;
+    session_id?: string;
+    filters?: Record<string, string>;
+  } = { query };
+
+  if (sessionId) {
+    payload.session_id = sessionId;
+  }
+  if (documentId && documentId !== "all") {
+    payload.filters = { document_id: documentId };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/generate/compare/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    });
+  } catch (err: unknown) {
+    if (signal?.aborted) return;
+    throw new Error(
+      `Cannot connect to backend server at ${API_BASE_URL}. Ensure uvicorn is running: uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload`
+    );
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || "Streaming comparison failed");
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("Streaming is not supported by your browser or server");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
+
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      const lines = block.split("\n");
+      let eventType = "message";
+      let eventDataStr = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) {
+          eventType = line.replace("event:", "").trim();
+        } else if (line.startsWith("data:")) {
+          eventDataStr = line.replace("data:", "").trim();
+        }
+      }
+
+      if (!eventDataStr) continue;
+
+      try {
+        const parsed = JSON.parse(eventDataStr);
+        if (eventType === "stage") callbacks?.onStage?.(parsed.stage, parsed.message);
+        else if (eventType === "provider") callbacks?.onProvider?.(parsed.model, parsed.provider);
+        else if (eventType === "sufficiency") callbacks?.onSufficiency?.(parsed);
+        else if (eventType === "abstention") callbacks?.onAbstention?.(parsed);
+        else if (eventType === "token") callbacks?.onToken?.(parsed.token);
+        else if (eventType === "grounding") callbacks?.onGrounding?.(parsed);
+        else if (eventType === "naive") callbacks?.onNaive?.(parsed);
+        else if (eventType === "done") callbacks?.onDone?.(parsed);
+      } catch {
+        // Skip unparseable malformed frames
+      }
+    }
+  }
 }
 
 export async function submitQuestion(
@@ -191,11 +305,19 @@ export async function submitQuestion(
     payload.filters = { document_id: documentId };
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/generate/pipeline/qa`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/generate/pipeline/qa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      `Cannot connect to backend server at ${API_BASE_URL}. Ensure uvicorn is running: uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload`
+    );
+  }
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(

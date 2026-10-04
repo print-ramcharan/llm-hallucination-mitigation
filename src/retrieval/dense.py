@@ -68,6 +68,13 @@ class DenseRetriever:
                 if len(filtered_results) >= top_k:
                     break
 
+        # Fallback: if user specified a document_id filter and no candidates passed oversampling,
+        # fallback directly to the document's chunks to guarantee retrieval for the target document
+        if not filtered_results and "document_id" in filters:
+            doc_chunks = self.metadata_store.get_by_document(filters["document_id"])
+            for record in doc_chunks[:top_k]:
+                filtered_results.append((record["chunk_id"], 0.1))
+
         return filtered_results
 
     @staticmethod
