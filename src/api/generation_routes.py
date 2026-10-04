@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any
 
@@ -22,6 +23,7 @@ from src.reranking.reranker import default_reranker
 from src.retrieval.hybrid import default_hybrid_retriever
 
 router = APIRouter(prefix="/api/generate", tags=["Grounded Generation & Guardrails"])
+logger = logging.getLogger("uvicorn.error")
 
 
 class FullQAPipelineRequest(BaseModel):
