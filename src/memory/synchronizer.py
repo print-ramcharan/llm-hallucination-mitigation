@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import List, Optional
 
 from src.generation.models import ClaimStatus, GroundingReport
 from src.memory.models import (
@@ -37,9 +36,9 @@ class CrossSessionMemorySynchronizer:
 
     def __init__(
         self,
-        store: Optional[ExternalMemoryStore] = None,
-        registry: Optional[SessionRegistry] = None,
-        summarizer: Optional[HierarchicalSummarizer] = None,
+        store: ExternalMemoryStore | None = None,
+        registry: SessionRegistry | None = None,
+        summarizer: HierarchicalSummarizer | None = None,
     ) -> None:
         self.store = store or default_memory_store
         self.registry = registry or default_session_registry
@@ -52,9 +51,9 @@ class CrossSessionMemorySynchronizer:
     def pre_inference_sync(
         self,
         query: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         user_id: str = "default_user",
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> MemorySyncContext:
         """Retrieve relevant past memories and synthesize a token-budgeted memory injection block."""
         if not session_id:
@@ -109,15 +108,15 @@ class CrossSessionMemorySynchronizer:
 
     def _format_compact_memory_context(
         self,
-        memories: List[EpisodicMemoryItem],
-        summaries: List[HierarchicalSummary],
+        memories: list[EpisodicMemoryItem],
+        summaries: list[HierarchicalSummary],
         max_tokens: int = 250,
     ) -> tuple[str, int]:
         """Synthesize a dense, compact markdown block guaranteed to stay within token budget."""
         if not memories and not summaries:
             return "", 0
 
-        blocks: List[str] = []
+        blocks: list[str] = []
 
         if summaries:
             summary = summaries[0]
@@ -159,12 +158,12 @@ class CrossSessionMemorySynchronizer:
         session_id: str,
         query: str,
         answer: str,
-        grounding_report: Optional[GroundingReport] = None,
-        intent: Optional[str] = None,
-        referenced_doc_ids: Optional[List[str]] = None,
-        tags: Optional[List[str]] = None,
+        grounding_report: GroundingReport | None = None,
+        intent: str | None = None,
+        referenced_doc_ids: list[str] | None = None,
+        tags: list[str] | None = None,
         user_id: str = "default_user",
-    ) -> Optional[EpisodicMemoryItem]:
+    ) -> EpisodicMemoryItem | None:
         """Record completed interaction, filter verified facts, and persist to vector storage."""
         session = self.registry.get_session(session_id)
         if not session:
@@ -176,8 +175,8 @@ class CrossSessionMemorySynchronizer:
             return None
 
         # Filter strictly verified factual propositions (only entailed claims)
-        verified_facts: List[str] = []
-        citations: List[str] = []
+        verified_facts: list[str] = []
+        citations: list[str] = []
         if grounding_report:
             citations = list(set(grounding_report.verified_citations))
             for claim in grounding_report.claims:

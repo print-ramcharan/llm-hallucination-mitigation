@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.query_processing.filter_extractor import FilterExtractor
 from src.query_processing.intent import IntentDetector
@@ -19,9 +19,9 @@ class QueryProcessor:
 
     def __init__(
         self,
-        rewriter: Optional[QueryRewriter] = None,
-        intent_detector: Optional[IntentDetector] = None,
-        filter_extractor: Optional[FilterExtractor] = None,
+        rewriter: QueryRewriter | None = None,
+        intent_detector: IntentDetector | None = None,
+        filter_extractor: FilterExtractor | None = None,
     ) -> None:
         self.rewriter = rewriter or QueryRewriter()
         self.intent_detector = intent_detector or IntentDetector()
@@ -30,7 +30,7 @@ class QueryProcessor:
     def process(
         self,
         query: str,
-        conversation_history: Optional[List[ConversationTurn]] = None,
+        conversation_history: list[ConversationTurn] | None = None,
     ) -> ProcessedQuery:
         """Process a raw user query through the complete query understanding pipeline."""
         raw_query = query.strip()
@@ -48,7 +48,7 @@ class QueryProcessor:
         # 4. Extract distinct keywords
         keywords = [w.lower() for w in search_query.split() if len(w) > 2]
 
-        metadata: Dict[str, Any] = {
+        metadata: dict[str, Any] = {
             "has_filters": bool(filters),
             "history_turns": len(conversation_history) if conversation_history else 0,
         }

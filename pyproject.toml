@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Polabathina Ramcharan Teja" }
+    { name = "Polabathina Ramcharan Teja" },
+    { name = "Sanjay Kumar" }
 ]
 
 dependencies = [

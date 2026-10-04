@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from src.memory.models import (
     EpisodicMemoryItem,
@@ -23,15 +23,15 @@ class SessionRegistry:
     remembered external memory at both the session level and individual memory turn level.
     """
 
-    def __init__(self, store: Optional[ExternalMemoryStore] = None) -> None:
+    def __init__(self, store: ExternalMemoryStore | None = None) -> None:
         self.store = store or default_memory_store
 
     def create_session(
         self,
         user_id: str = "default_user",
         title: str = "New Session",
-        active_document_ids: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        active_document_ids: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Session:
         """Create a new conversational session and initialize its permissions."""
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
@@ -57,7 +57,7 @@ class SessionRegistry:
 
         return session
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         """Fetch session metadata by session ID."""
         return self.store.get_session(session_id)
 
@@ -73,19 +73,19 @@ class SessionRegistry:
         )
 
     def list_sessions(
-        self, user_id: Optional[str] = None, is_active: Optional[bool] = None
-    ) -> List[Session]:
+        self, user_id: str | None = None, is_active: bool | None = None
+    ) -> list[Session]:
         """List sessions filtered by user or activity state."""
         return self.store.list_sessions(user_id=user_id, is_active=is_active)
 
     def update_session(
         self,
         session_id: str,
-        title: Optional[str] = None,
-        active_document_ids: Optional[List[str]] = None,
-        is_active: Optional[bool] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Session]:
+        title: str | None = None,
+        active_document_ids: list[str] | None = None,
+        is_active: bool | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Session | None:
         """Update mutable fields of a session."""
         session = self.store.get_session(session_id)
         if not session:
@@ -128,7 +128,7 @@ class SessionRegistry:
 
     def inspect_session_memory(
         self, session_id: str
-    ) -> Tuple[Optional[Session], List[EpisodicMemoryItem], List[HierarchicalSummary]]:
+    ) -> tuple[Session | None, list[EpisodicMemoryItem], list[HierarchicalSummary]]:
         """Return full session state, chronological interaction turns, and summaries."""
         session = self.store.get_session(session_id)
         turns = self.store.list_session_memories(session_id)
@@ -140,7 +140,7 @@ class SessionRegistry:
         cleared = self.store.clear_session_memories(session_id)
         return cleared >= 0
 
-    def export_session_memory(self, session_id: str) -> Optional[MemoryExport]:
+    def export_session_memory(self, session_id: str) -> MemoryExport | None:
         """Generate structured and human-readable Markdown export of session memory."""
         session = self.store.get_session(session_id)
         if not session:

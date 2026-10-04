@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from src.chunking.tokenizer import count_tokens
 from src.context.budget_manager import TokenBudgetManager
@@ -30,10 +30,10 @@ class ContextCompactor:
 
     def __init__(
         self,
-        sentence_pruner: Optional[SentencePruner] = None,
-        deduplicator: Optional[ContextDeduplicator] = None,
-        reorderer: Optional[LostInTheMiddleReorderer] = None,
-        budget_manager: Optional[TokenBudgetManager] = None,
+        sentence_pruner: SentencePruner | None = None,
+        deduplicator: ContextDeduplicator | None = None,
+        reorderer: LostInTheMiddleReorderer | None = None,
+        budget_manager: TokenBudgetManager | None = None,
     ) -> None:
         self.sentence_pruner = sentence_pruner or SentencePruner()
         self.deduplicator = deduplicator or ContextDeduplicator()
@@ -43,7 +43,7 @@ class ContextCompactor:
     def compact(
         self,
         query: str,
-        chunks: List[RerankedChunk],
+        chunks: list[RerankedChunk],
         max_token_budget: int = 1500,
         enable_sentence_pruning: bool = True,
         enable_deduplication: bool = True,
@@ -83,10 +83,10 @@ class ContextCompactor:
                 execution_time_ms=round(elapsed_ms, 2),
             )
 
-        seen_sentence_terms: List[Set[str]] = []
+        seen_sentence_terms: list[set[str]] = []
         dedup_pruned_total = 0
 
-        compacted_candidates: List[Dict[str, Any]] = []
+        compacted_candidates: list[dict[str, Any]] = []
 
         # Stage 1 & 2: Sentence-Level Pruning and Overlap Deduplication per chunk
         for chunk in chunks:
@@ -149,7 +149,7 @@ class ContextCompactor:
         )
 
         # Build CompactedEvidence objects
-        evidence_items: List[CompactedEvidence] = []
+        evidence_items: list[CompactedEvidence] = []
         for pos, item in enumerate(accepted_items, start=1):
             orig_t = item["original_token_count"]
             curr_t = item["token_count"]

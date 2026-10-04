@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from src.chunking.tokenizer import count_tokens
 
@@ -30,7 +30,7 @@ class TokenBudgetManager:
         self,
         citation_tag: str,
         text: str,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> str:
         """Format an individual evidence section with citation header and source provenance."""
         source_name = metadata.get("source", metadata.get("source_name", "Unknown Source"))
@@ -48,9 +48,9 @@ class TokenBudgetManager:
 
     def fit_within_budget(
         self,
-        evidence_candidates: List[Dict[str, Any]],
+        evidence_candidates: list[dict[str, Any]],
         max_budget: int | None = None,
-    ) -> Tuple[str, List[Dict[str, Any]], int]:
+    ) -> tuple[str, list[dict[str, Any]], int]:
         """Pack evidence items into the prompt context strictly respecting the token budget.
 
         Args:
@@ -62,12 +62,12 @@ class TokenBudgetManager:
         """
         budget = self.default_budget if max_budget is None else max_budget
 
-        accepted_blocks: List[str] = []
-        accepted_items: List[Dict[str, Any]] = []
+        accepted_blocks: list[str] = []
+        accepted_items: list[dict[str, Any]] = []
         current_token_count = 0
 
         # Unique document tracking for Doc 1, Doc 2 numbering
-        doc_id_to_num: Dict[str, int] = {}
+        doc_id_to_num: dict[str, int] = {}
 
         for item in evidence_candidates:
             doc_id = item["document_id"]

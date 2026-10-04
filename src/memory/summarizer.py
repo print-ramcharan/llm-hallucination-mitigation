@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import List, Set
 
 from src.memory.models import EpisodicMemoryItem, HierarchicalSummary, Session
 
@@ -20,9 +19,9 @@ class HierarchicalSummarizer:
     def __init__(self, turns_per_summary: int = 5) -> None:
         self.turns_per_summary = turns_per_summary
 
-    def extract_key_entities(self, memories: List[EpisodicMemoryItem]) -> List[str]:
+    def extract_key_entities(self, memories: list[EpisodicMemoryItem]) -> list[str]:
         """Extract focal entities, document references, and domain concepts from memories."""
-        entities: Set[str] = set()
+        entities: set[str] = set()
 
         for m in memories:
             # Include explicit referenced document IDs
@@ -44,12 +43,12 @@ class HierarchicalSummarizer:
                     entities.add(match)
 
         # Return sorted list of unique entities, capped at 15
-        return sorted(list(entities))[:15]
+        return sorted(entities)[:15]
 
     def summarize_session(
         self,
         session: Session,
-        memories: List[EpisodicMemoryItem],
+        memories: list[EpisodicMemoryItem],
         level: int = 1,
     ) -> HierarchicalSummary:
         """Condense a session's episodic memories into a persistent HierarchicalSummary."""
@@ -67,7 +66,7 @@ class HierarchicalSummarizer:
         key_entities = self.extract_key_entities(memories)
 
         # Collect distinct verified facts across turns
-        all_verified_facts: List[str] = []
+        all_verified_facts: list[str] = []
         for m in memories:
             for fact in m.verified_facts:
                 if fact and fact not in all_verified_facts:
@@ -75,7 +74,7 @@ class HierarchicalSummarizer:
 
         # Build bulleted interaction summary
         turn_points = []
-        for idx, m in enumerate(memories[-self.turns_per_summary:], 1):
+        for m in memories[-self.turns_per_summary:]:
             q_clean = m.query.strip().rstrip("?")
             ans_snippet = m.answer.strip().split(".")[0] if m.answer else "Concluded."
             turn_points.append(f"- User queried '{q_clean}': Established that {ans_snippet}.")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, status
 
@@ -32,7 +32,7 @@ def retrieve_hybrid(payload: RetrievalRequest) -> RetrievalResponse:
     status_code=status.HTTP_200_OK,
     summary="Get status and telemetry of hybrid retrieval indexes",
 )
-def get_retrieval_status() -> Dict[str, Any]:
+def get_retrieval_status() -> dict[str, Any]:
     """Retrieve index sizes and status across FAISS, BM25, and Metadata Store."""
     stats = default_hybrid_retriever.index_manager.get_stats()
     return {

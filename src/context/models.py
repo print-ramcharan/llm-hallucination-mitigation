@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,7 +39,7 @@ class CompactedEvidence(BaseModel):
         ...,
         description="1-based position in the final U-shaped context sequence.",
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Preserved chunk metadata tags (e.g. source, page, section).",
     )
@@ -49,7 +49,7 @@ class CompactionRequest(BaseModel):
     """Payload for submitting reranked candidates to the extractive context optimizer."""
 
     query: str = Field(..., description="Original user search query.")
-    chunks: List[RerankedChunk] = Field(
+    chunks: list[RerankedChunk] = Field(
         ...,
         description="Top-ranked high-confidence chunks from Module 4 cross-encoder reranking.",
     )
@@ -93,7 +93,7 @@ class OptimizedContext(BaseModel):
         ...,
         description="Fully formatted prompt text block with explicit [Doc X, Chunk Y] citation tags.",
     )
-    evidence_items: List[CompactedEvidence] = Field(
+    evidence_items: list[CompactedEvidence] = Field(
         default_factory=list,
         description="Ordered list of compacted evidence segments.",
     )

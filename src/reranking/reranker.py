@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import re
 import time
-from typing import List, Optional
 
 import numpy as np
 
@@ -14,6 +14,21 @@ from src.reranking.models import (
     RerankingRequest,
 )
 from src.retrieval.models import RetrievalResponse, RetrievedCandidate
+
+
+def clean_query_for_reranking(query: str) -> str:
+    """Strip document-framing meta phrases that bias cross-attention away from substantive content."""
+    cleaned = query.strip()
+    patterns = [
+        r"\b(?:mentioned|stated|listed|given|described|provided|found)\s+in\s+(?:the|this)\s+(?:document|doc|file|text|passage|context)\b",
+        r"\baccording\s+to\s+(?:the|this)\s+(?:document|doc|file|text|passage|context)\b",
+        r"\bin\s+(?:the|this)\s+(?:document|doc|file|text|passage|context)\b",
+        r"\bfrom\s+(?:the|this)\s+(?:document|doc|file|text|passage|context)\b",
+    ]
+    for pattern in patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned if len(cleaned) >= 3 else query.strip()
 
 
 class CrossEncoderReranker:
@@ -28,7 +43,7 @@ class CrossEncoderReranker:
 
     def __init__(
         self,
-        engine: Optional[CrossEncoderEngine] = None,
+        engine: CrossEncoderEngine | None = None,
         default_threshold: float = 0.35,
         default_top_n: int = 5,
     ) -> None:
@@ -65,9 +80,9 @@ class CrossEncoderReranker:
     def rerank(
         self,
         query: str,
-        candidates: List[RetrievedCandidate],
-        threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
+        candidates: list[RetrievedCandidate],
+        threshold: float | None = None,
+        top_n: int | None = None,
         normalization: str = "sigmoid",
     ) -> RankedContext:
         """Score, calibrate, and aggressively prune candidates into a high-precision RankedContext.
@@ -100,8 +115,9 @@ class CrossEncoderReranker:
                 execution_time_ms=round(elapsed_ms, 2),
             )
 
-        # 1. Construct (query, passage) pairs for joint cross-attention
-        pairs = [(query, c.content) for c in candidates]
+        # 1. Clean query of framing noise for cross-attention scoring
+        attention_query = clean_query_for_reranking(query)
+        pairs = [(attention_query, c.content) for c in candidates]
 
         # 2. Compute raw all-to-all cross-attention logits
         raw_logits = self.engine.predict(pairs)
@@ -126,8 +142,8 @@ class CrossEncoderReranker:
         scored_candidates.sort(key=lambda item: item["rerank_score"], reverse=True)
 
         # 6. Candidate Pruning Layer: Hard Cutoff (s >= tau) + Top-N Retention
-        retained_chunks: List[RerankedChunk] = []
-        for rank_pos, item in enumerate(scored_candidates, start=1):
+        retained_chunks: list[RerankedChunk] = []
+        for item in scored_candidates:
             if item["rerank_score"] < tau:
                 # Discard candidates falling below the relevance threshold
                 continue
@@ -151,6 +167,27 @@ class CrossEncoderReranker:
             # Cap retained candidates to top-N budget
             if len(retained_chunks) >= n:
                 break
+
+        # Fallback safety: If no candidates exceed tau, retain the top candidate(s)
+        # to allow downstream context compactor and evidence sufficiency gating to evaluate factual coverage
+        if not retained_chunks and scored_candidates:
+            top_candidates = scored_candidates[: min(len(scored_candidates), n)]
+            for rank_idx, item in enumerate(top_candidates):
+                c = item["candidate"]
+                retained_chunks.append(
+                    RerankedChunk(
+                        chunk_id=c.chunk_id,
+                        content=c.content,
+                        document_id=c.document_id,
+                        chunk_index=c.chunk_index,
+                        metadata=c.metadata,
+                        initial_rank=item["initial_rank"],
+                        initial_score=item["initial_score"],
+                        rerank_score=round(item["rerank_score"], 4),
+                        raw_score=round(item["raw_score"], 4),
+                        rerank_position=rank_idx + 1,
+                    )
+                )
 
         pruned_count = total_input - len(retained_chunks)
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -179,8 +216,8 @@ class CrossEncoderReranker:
     def rerank_retrieval_response(
         self,
         response: RetrievalResponse,
-        threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
+        threshold: float | None = None,
+        top_n: int | None = None,
         normalization: str = "sigmoid",
     ) -> RankedContext:
         """Convenience chaining Module 3 RetrievalResponse into Module 4 reranking."""

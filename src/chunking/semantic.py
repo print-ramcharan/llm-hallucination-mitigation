@@ -176,8 +176,8 @@ class SemanticChunker:
         """Assemble a single DocumentChunk with complete metadata."""
         content = "\n\n".join(t for t in texts if t.strip()).strip()
         tokens = count_tokens(content)
-        primary_page = sorted(list(pages))[0] if pages else None
-        primary_section = sorted(list(sections))[0] if sections else section_title
+        primary_page = sorted(pages)[0] if pages else None
+        primary_section = sorted(sections)[0] if sections else section_title
 
         meta = MetadataTagger.build_chunk_metadata(
             source_name=source_name,
@@ -198,8 +198,8 @@ class SemanticChunker:
             content=content,
             char_count=len(content),
             word_count=len(content.split()),
-            page_numbers=sorted(list(pages)),
-            section_titles=sorted(list(sections)),
+            page_numbers=sorted(pages),
+            section_titles=sorted(sections),
             metadata=meta,
         )
 

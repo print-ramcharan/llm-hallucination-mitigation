@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.indexing.manager import IndexManager, default_index_manager
 from src.query_processing.models import ConversationTurn
@@ -31,11 +31,11 @@ class HybridRetriever:
 
     def __init__(
         self,
-        index_manager: Optional[IndexManager] = None,
-        query_processor: Optional[QueryProcessor] = None,
-        dense_retriever: Optional[DenseRetriever] = None,
-        sparse_retriever: Optional[SparseRetriever] = None,
-        rrf_engine: Optional[RRFEngine] = None,
+        index_manager: IndexManager | None = None,
+        query_processor: QueryProcessor | None = None,
+        dense_retriever: DenseRetriever | None = None,
+        sparse_retriever: SparseRetriever | None = None,
+        rrf_engine: RRFEngine | None = None,
     ) -> None:
         self.index_manager = index_manager or default_index_manager
         self.query_processor = query_processor or default_query_processor
@@ -58,8 +58,8 @@ class HybridRetriever:
     def retrieve(
         self,
         query: str,
-        conversation_history: Optional[List[ConversationTurn]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        conversation_history: list[ConversationTurn] | None = None,
+        filters: dict[str, Any] | None = None,
         top_k_dense: int = 25,
         top_k_sparse: int = 25,
         top_k_fused: int = 20,
@@ -88,7 +88,7 @@ class HybridRetriever:
         )
 
         # Merge extracted metadata filters with explicit user filters (explicit overrides)
-        combined_filters: Dict[str, Any] = {}
+        combined_filters: dict[str, Any] = {}
         if processed_query.filters:
             combined_filters.update(processed_query.filters)
         if filters:
@@ -111,7 +111,7 @@ class HybridRetriever:
         )
 
         # Stage 4: Reciprocal Rank Fusion (RRF)
-        candidates: List[RetrievedCandidate] = self.rrf_engine.fuse(
+        candidates: list[RetrievedCandidate] = self.rrf_engine.fuse(
             dense_results=dense_results,
             sparse_results=sparse_results,
             top_k=top_k_fused,

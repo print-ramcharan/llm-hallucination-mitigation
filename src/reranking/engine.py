@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -16,7 +16,7 @@ class CrossEncoderEngine:
 
     def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
         self._model_name = model_name
-        self._model: Optional[Any] = None
+        self._model: Any | None = None
 
     @property
     def model_name(self) -> str:
@@ -31,7 +31,7 @@ class CrossEncoderEngine:
             self._model = CrossEncoder(self._model_name)
         return self._model
 
-    def predict(self, pairs: List[Tuple[str, str]]) -> np.ndarray:
+    def predict(self, pairs: list[tuple[str, str]]) -> np.ndarray:
         """Compute all-to-all cross-attention scores for a batch of (query, passage) pairs.
 
         Args:

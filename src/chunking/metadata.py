@@ -44,9 +44,7 @@ class MetadataTagger:
     ) -> str:
         """Infer or format document_type (e.g. 'HR_POLICY', 'RESEARCH_PAPER', 'TECHNICAL_SPEC')."""
         if explicit_type and explicit_type.strip():
-            # Format explicit type as UPPER_SNAKE_CASE
-            formatted = re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
-            return formatted
+            return re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
 
         haystack = f"{source_name} {text_sample}".lower()
 

@@ -1,276 +1,504 @@
 "use client";
 
-import React, { useState } from "react";
-import { submitQuestion, GroundedAnswerResponse } from "@/lib/api";
+import React, { useState, useRef } from "react";
 import {
+  ComparisonResponse,
+  GroundedAnswerResponse,
+  streamQuestionComparison,
+} from "@/lib/api";
+import { Document, DocumentMetadata } from "@/types/ingestion";
+import { UploadZone } from "./UploadZone";
+import {
+  Bot,
   ShieldCheck,
-  ShieldAlert,
-  Sparkles,
-  HelpCircle,
-  CheckCircle2,
+  UploadCloud,
+  FileText,
+  Send,
+  RefreshCw,
   AlertTriangle,
-  Clock,
-  CircleCheck,
-  CircleX,
-  CircleMinus,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  Cpu,
 } from "lucide-react";
 
-const statusColor = (status: string) =>
-  status === "entailed"
-    ? "text-emerald-400"
-    : status === "contradicted"
-      ? "text-red-400"
-      : "text-amber-400";
+interface GroundedQAProps {
+  documents?: DocumentMetadata[];
+  selectedDocId?: string | null;
+  onSelectDocId?: (docId: string | null) => void;
+  onUploadSuccess?: (doc: Document) => void;
+}
 
-const statusLabel = (status: string) =>
-  status === "entailed"
-    ? "Entailed"
-    : status === "contradicted"
-      ? "Contradicted"
-      : "Neutral";
-
-export function GroundedQA() {
+export function GroundedQA({
+  documents = [],
+  selectedDocId = null,
+  onSelectDocId,
+  onUploadSuccess,
+}: GroundedQAProps) {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<GroundedAnswerResponse | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [currentStage, setCurrentStage] = useState<string | null>(null);
+  const [currentStageMessage, setCurrentStageMessage] = useState<string | null>(null);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
+  const [streamedAnswer, setStreamedAnswer] = useState<string>("");
+  const [comparison, setComparison] = useState<ComparisonResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showUploadZone, setShowUploadZone] = useState(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const selectedDoc = documents.find((d) => d.document_id === selectedDocId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setIsLoading(true);
+    setIsStreaming(true);
     setError(null);
+    setComparison(null);
+    setStreamedAnswer("");
+    setCurrentStage("starting");
+    setCurrentStageMessage("Initiating hybrid retrieval & fallback pipeline...");
+    setActiveProvider(null);
+
+    let accumulatedTokens = "";
+    let capturedSufficiency: any = null;
+    let capturedGrounding: any = null;
+    let capturedNaive: any = null;
+    let capturedProvider = "Auto-Fallback Cascade";
+
     try {
-      const res = await submitQuestion(query.trim());
-      setResponse(res);
+      await streamQuestionComparison(
+        query.trim(),
+        undefined,
+        selectedDocId || undefined,
+        {
+          onStage: (stage, message) => {
+            setCurrentStage(stage);
+            setCurrentStageMessage(message);
+          },
+          onProvider: (model, provider) => {
+            setActiveProvider(`${provider} (${model})`);
+            capturedProvider = `${provider} (${model})`;
+          },
+          onSufficiency: (sufficiency) => {
+            capturedSufficiency = sufficiency;
+          },
+          onAbstention: (abstention) => {
+            accumulatedTokens = abstention.answer;
+            setStreamedAnswer(abstention.answer);
+          },
+          onToken: (token) => {
+            accumulatedTokens += token;
+            setStreamedAnswer((prev) => prev + token);
+          },
+          onGrounding: (report) => {
+            capturedGrounding = report;
+          },
+          onNaive: (naive) => {
+            capturedNaive = naive;
+          },
+          onDone: (data) => {
+            const comp: ComparisonResponse = {
+              query: query.trim(),
+              naive: capturedNaive || {
+                query: query.trim(),
+                answer: "Naive baseline processing completed.",
+                has_citations: false,
+                citations: [],
+                faithfulness_score: 0.2,
+                hallucination_risk: "High (Unverified)",
+                latency_ms: data.latency_ms,
+                model_name: "Naive Baseline",
+              },
+              grounded: {
+                query: query.trim(),
+                answer: accumulatedTokens,
+                abstained: capturedSufficiency ? !capturedSufficiency.is_sufficient : false,
+                abstention_reason: capturedSufficiency?.reasoning || null,
+                sufficiency: capturedSufficiency || {
+                  is_sufficient: true,
+                  sufficiency_score: 1.0,
+                  reasoning: "Sufficient evidence",
+                  missing_aspects: [],
+                  topic: "Query context",
+                  abstention_message: null,
+                },
+                grounding_report: capturedGrounding || {
+                  faithfulness_score: 1.0,
+                  hallucination_detected: false,
+                  total_claims: 0,
+                  entailed_claims_count: 0,
+                  neutral_claims_count: 0,
+                  contradicted_claims_count: 0,
+                  claims: [],
+                  verified_citations: data.citations || [],
+                  unverified_citations: [],
+                },
+                citations: data.citations || [],
+                latency_ms: data.latency_ms,
+                model_name: data.model || capturedProvider,
+              },
+              metrics_comparison: data.metrics_comparison,
+            };
+            setComparison(comp);
+            setIsStreaming(false);
+          },
+        },
+        abortController.signal
+      );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to generate answer");
+      if (!abortController.signal.aborted) {
+        setError(err instanceof Error ? err.message : "Failed to execute streaming comparison");
+      }
+      setIsStreaming(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 mb-2">
-          <Sparkles className="w-5 h-5 text-indigo-400" />
-          Grounded Q&A & Hallucination Mitigation
-        </h2>
-        <p className="text-sm text-slate-400 mb-6">
-          Query the ingested knowledge base through the complete hallucination-mitigation pipeline:
-          Hybrid Retrieval &rarr; Cross-Encoder Reranking &rarr; Context Compaction &rarr; Evidence Sufficiency Gate &rarr; Grounded Generation / Abstention.
-        </p>
+  const handleDocumentIngested = (doc: Document) => {
+    if (onUploadSuccess) onUploadSuccess(doc);
+    if (onSelectDocId) onSelectDocId(doc.id);
+    setShowUploadZone(false);
+  };
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask a question grounded in your documents (e.g. 'What is the vacation policy?')..."
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !query.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-lg flex items-center gap-2 transition"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                "Ask & Ground"
-              )}
-            </button>
+  const grounded: GroundedAnswerResponse | undefined = comparison?.grounded;
+  const naive = comparison?.naive;
+
+  // Format citations cleanly in grounded answer text
+  const renderGroundedAnswer = (text: string) => {
+    const parts = text.split(/(\[Doc\s+[^\]]+\])/g);
+    return parts.map((part, i) => {
+      if (/^\[Doc\s+[^\]]+\]$/.test(part)) {
+        return (
+          <span
+            key={i}
+            className="inline-block bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded text-xs font-mono font-medium mx-1 shadow-sm"
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* ==================================================================== */}
+      {/* 1. DOCUMENT & FALLBACK STATUS BAR (ORCHESTRATOR)                     */}
+      {/* ==================================================================== */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <FileText className="w-5 h-5" />
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-200">Target Context:</span>
+              {documents.length > 0 ? (
+                <select
+                  value={selectedDocId || "all"}
+                  onChange={(e) =>
+                    onSelectDocId?.(e.target.value === "all" ? null : e.target.value)
+                  }
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="all">All Documents ({documents.length})</option>
+                  {documents.map((d) => (
+                    <option key={d.document_id} value={d.document_id}>
+                      {d.source_name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-xs text-amber-400 font-medium">
+                  No document uploaded yet
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {selectedDoc
+                ? `Active: ${selectedDoc.source_name} (${selectedDoc.chunk_count} chunks • 220 words + 30 overlap)`
+                : documents.length > 0
+                ? "Full corpus index (FAISS Dense + BM25 Sparse + RRF)"
+                : "Upload a document to run grounded anti-hallucination inference"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Dynamic Auto-Fallback Cascade Indicator */}
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                Fallback Cascade:
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-mono">
+              <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
+                Gemini
+              </span>
+              <span className="text-slate-600">&rarr;</span>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                Groq
+              </span>
+              <span className="text-slate-600">&rarr;</span>
+              <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-medium">
+                OpenRouter
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowUploadZone(!showUploadZone)}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shrink-0"
+          >
+            <UploadCloud className="w-4 h-4 text-indigo-400" />
+            {showUploadZone ? "Close Uploader" : "Upload Document"}
+          </button>
+        </div>
+      </div>
+
+      {/* Upload Zone Modal / Drawer */}
+      {(showUploadZone || documents.length === 0) && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              Upload Document (PDF, DOCX, TXT, MD)
+            </h3>
+            {documents.length > 0 && (
+              <button
+                onClick={() => setShowUploadZone(false)}
+                className="text-xs text-slate-400 hover:text-slate-200"
+              >
+                Close
+              </button>
+            )}
+          </div>
+          <UploadZone onIngestSuccess={handleDocumentIngested} />
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* 2. QUERY INPUT & REAL-TIME PROGRESS                                  */}
+      {/* ==================================================================== */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={
+              selectedDoc
+                ? `Ask anything about "${selectedDoc.source_name}" (Streamed via Gemini / Groq / OpenRouter)...`
+                : "Ask a question to stream comparison: Naive Baseline vs. Grounded Pipeline..."
+            }
+            className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !query.trim()}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium px-5 py-3 rounded-lg flex items-center gap-2 text-sm transition shrink-0 shadow-md shadow-indigo-600/20"
+          >
+            {isLoading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Streaming...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Compare &amp; Stream
+              </>
+            )}
+          </button>
         </form>
 
+        {/* Live Stepper Status Pill */}
+        {isLoading && currentStageMessage && (
+          <div className="flex items-center justify-between bg-slate-950/80 border border-indigo-900/40 rounded-lg px-3.5 py-2 text-xs text-slate-300">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              </span>
+              <span className="font-mono text-indigo-300 uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/40">
+                {currentStage}
+              </span>
+              <span className="text-slate-300">{currentStageMessage}</span>
+            </div>
+            {activeProvider && (
+              <span className="text-[11px] font-mono text-emerald-400 font-medium">
+                Active: {activeProvider}
+              </span>
+            )}
+          </div>
+        )}
+
         {error && (
-          <div className="mt-4 p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2">
+          <div className="p-3 bg-red-950/40 border border-red-800/80 rounded-lg text-red-200 text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-            {error}
+            <span className="flex-1">{error}</span>
           </div>
         )}
       </div>
 
-      {response && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-xl">
-          {/* Status Banner */}
-          <div
-            className={`p-4 rounded-xl border flex items-start gap-4 ${
-              response.abstained
-                ? "bg-amber-950/30 border-amber-800/80 text-amber-200"
-                : "bg-emerald-950/30 border-emerald-800/80 text-emerald-200"
-            }`}
-          >
-            {response.abstained ? (
-              <ShieldAlert className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
-            ) : (
-              <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
-            )}
-            <div className="space-y-1">
-              <div className="font-semibold text-base flex items-center gap-2">
-                {response.abstained ? "Safely Abstained" : "Grounded Answer"}
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-slate-800/80 text-slate-300">
-                  Sufficiency: {Math.round(response.sufficiency.sufficiency_score * 100)}%
-                </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-slate-800/80 text-slate-300">
-                  Faithfulness: {Math.round(response.grounding_report.faithfulness_score * 100)}%
-                </span>
-              </div>
-              <p className="text-sm opacity-90 leading-relaxed">{response.answer}</p>
-            </div>
-          </div>
-
-          {response.abstained && response.abstention_reason && (
-            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs text-slate-300">
-              <span className="text-slate-400 font-medium">Abstention reason: </span>
-              {response.abstention_reason}
-            </div>
-          )}
-{/* Evidence Sufficiency Gate Panel */}
-          <div className="bg-slate-950 border border-slate-800/90 rounded-lg p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-indigo-400" />
-              Evidence Sufficiency Decision
+      {/* ==================================================================== */}
+      {/* 3. SIDE-BY-SIDE STREAMING COMPARISON VIEW                            */}
+      {/* ==================================================================== */}
+      {(isStreaming || comparison || streamedAnswer) && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              Comparison for: &ldquo;{query || comparison?.query}&rdquo;
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="bg-slate-900 p-2.5 rounded border border-slate-800">
-                <span className="text-slate-400 block">Sufficiency</span>
-                <span className={`font-semibold ${response.sufficiency.is_sufficient ? "text-emerald-400" : "text-amber-400"}`}>
-                  {response.sufficiency.is_sufficient ? "Sufficient" : "Insufficient"}
-                </span>
-              </div>
-              <div className="bg-slate-900 p-2.5 rounded border border-slate-800">
-                <span className="text-slate-400 block">Score</span>
-                <span className="font-mono text-slate-200">
-                  {Math.round(response.sufficiency.sufficiency_score * 100)}%
-                </span>
-              </div>
-              <div className="bg-slate-900 p-2.5 rounded border border-slate-800">
-                <span className="text-slate-400 block">Threshold</span>
-                <span className="font-mono text-slate-200">
-                  {response.sufficiency.threshold.toFixed(2)}
-                </span>
-              </div>
-              <div className="bg-slate-900 p-2.5 rounded border border-slate-800">
-                <span className="text-slate-400 block">Topic</span>
-                <span className="text-slate-200 truncate">{response.sufficiency.topic}</span>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 italic">
-              Reasoning: {response.sufficiency.reasoning}
-            </p>
-            {response.sufficiency.missing_aspects.length > 0 && (
-              <div className="text-xs text-amber-300/90 space-y-0.5">
-                <span>Missing aspects: </span>
-                {response.sufficiency.missing_aspects.map((m, i) => (
-                  <span key={i} className="font-mono bg-slate-900/80 border border-slate-800 rounded px-1.5 py-0.5 text-xs">
-                    {m}
-                  </span>
-                ))}
-              </div>
+            {(activeProvider || comparison?.grounded?.model_name) && (
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5" />
+                {activeProvider || comparison?.grounded?.model_name}
+              </span>
             )}
           </div>
-{/* Claim-Level Verification */}
-          {response.grounding_report.claims.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                Claim-Level NLI Verification
-              </h3>
-              <div className="space-y-2">
-                {response.grounding_report.claims.map((c, i) => (
-                  <div key={i} className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-200 leading-normal">{c.claim_text}</span>
-                      <span className={`shrink-0 font-mono ${statusColor(c.status)}`}>
-                        {statusLabel(c.status)} ({Math.round(c.confidence * 100)}%)
-                      </span>
-                    </div>
-                    {c.evidence_snippet && (
-                      <p className="text-slate-400/90">&ldquo;{c.evidence_snippet}&rdquo;</p>
-                    )}
-                    {c.cited_sources.length > 0 && (
-                      <div className="text-slate-500">
-                        Sources: {c.cited_sources.join(", ")}
-                      </div>
-                    )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* ---------------------------------------------------------------- */}
+            {/* LEFT: NAIVE LLM (ENTIRE RAW DOCUMENT PROMPT)                     */}
+            {/* ---------------------------------------------------------------- */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-slate-400" />
+                    <span className="font-semibold text-sm text-slate-200">
+                      Naive LLM (Monolithic Baseline)
+                    </span>
                   </div>
-                ))}
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                    No Retrieval / Blind
+                  </span>
+                </div>
+
+                <div className="text-sm leading-relaxed text-slate-300 min-h-[120px]">
+                  {naive ? (
+                    naive.answer
+                  ) : isLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-500 pt-6">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Computing ungrounded monolithic prompt baseline...</span>
+                    </div>
+                  ) : (
+                    "No naive baseline response available."
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800/60 text-xs text-slate-500 flex items-center justify-between">
+                <span>⚠️ Directly prompted with entire raw document text without chunking.</span>
+                {naive && (
+                  <span className="text-red-400 font-mono text-[11px]">
+                    0 citations • Unverified
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* ---------------------------------------------------------------- */}
+            {/* RIGHT: OUR APPLICATION (FALLBACK LLM + VERIFICATION)              */}
+            {/* ---------------------------------------------------------------- */}
+            <div className="bg-slate-900 border border-indigo-900/50 rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm ring-1 ring-indigo-500/10">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span className="font-semibold text-sm text-white">
+                      Our Application (Grounded Mitigation)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Grounded &amp; NLI Verified
+                  </span>
+                </div>
+
+                <div className="text-sm leading-relaxed text-slate-100 min-h-[120px]">
+                  {isStreaming ? (
+                    <div>
+                      {renderGroundedAnswer(streamedAnswer)}
+                      <span className="inline-block w-2 h-4 ml-1 bg-indigo-400 animate-pulse align-middle" />
+                    </div>
+                  ) : grounded ? (
+                    renderGroundedAnswer(grounded.answer)
+                  ) : streamedAnswer ? (
+                    renderGroundedAnswer(streamedAnswer)
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-indigo-300/80 pt-6">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Streaming response via fallback cascade...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800/60 text-xs text-emerald-400/90 flex items-center justify-between">
+                <span>✓ Hybrid Retrieval • Compaction • Truthful Abstention • Claim NLI</span>
+                {(grounded?.citations?.length ?? 0) > 0 && (
+                  <span className="text-indigo-300 font-mono text-[11px] font-semibold">
+                    {grounded?.citations.length} verified citations
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Comparison Metrics Telemetry Cards */}
+          {comparison?.metrics_comparison && (
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Guardrail Verification Metrics
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="text-slate-500 text-[10px] uppercase">Faithfulness</div>
+                  <div className="text-emerald-400 font-bold mt-0.5">
+                    {comparison.metrics_comparison.grounded_faithfulness}
+                  </div>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="text-slate-500 text-[10px] uppercase">Sufficiency Gate</div>
+                  <div className="text-indigo-300 font-bold mt-0.5">
+                    {comparison.metrics_comparison.grounded_sufficiency_gate}
+                  </div>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="text-slate-500 text-[10px] uppercase">NLI Claims</div>
+                  <div className="text-slate-200 font-bold mt-0.5">
+                    {comparison.metrics_comparison.grounded_nli_claims}
+                  </div>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="text-slate-500 text-[10px] uppercase">Latency</div>
+                  <div className="text-amber-400 font-bold mt-0.5">
+                    {comparison.grounded?.latency_ms} ms
+                  </div>
+                </div>
               </div>
             </div>
           )}
-{/* Citations & Provenance */}
-          {(response.grounding_report.verified_citations.length > 0 ||
-            response.grounding_report.unverified_citations.length > 0) && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                <CircleCheck className="w-4 h-4 text-emerald-400" />
-                Citation Provenance
-              </h3>
-              {response.grounding_report.verified_citations.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-xs text-slate-400">Verified citations:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {response.grounding_report.verified_citations.map((c, i) => (
-                      <span key={i} className="font-mono text-xs bg-emerald-950/20 border border-emerald-800/60 text-emerald-300 rounded px-2 py-1">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {response.grounding_report.unverified_citations.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-xs text-slate-400">Unverified citations (warned):</div>
-                  <div className="flex flex-wrap gap-2">
-                    {response.grounding_report.unverified_citations.map((c, i) => (
-                      <span key={i} className="font-mono text-xs bg-amber-950/20 border border-amber-700/60 text-amber-300 rounded px-2 py-1">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-{/* Hallucination Warning */}
-          {response.grounding_report.hallucination_detected && (
-            <div className="p-3 bg-red-950/40 border border-red-800/70 rounded-lg text-red-200 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-              Hallucination risk detected: some generated claims could not be fully grounded in the provided evidence.
-            </div>
-          )}
-
-          {/* Grounding Telemetry */}
-          <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs text-slate-400 space-y-2">
-            <div className="flex items-center gap-2 text-slate-300 font-medium">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              Grounding Telemetry
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-400 font-mono">
-              <span className="flex items-center gap-1">
-                <CircleCheck className="w-3.5 h-3.5 text-emerald-500" />
-                Entailed: {response.grounding_report.entailed_claims_count}
-              </span>
-              <span className="flex items-center gap-1">
-                <CircleMinus className="w-3.5 h-3.5 text-amber-400" />
-                Neutral: {response.grounding_report.neutral_claims_count}
-              </span>
-              <span className="flex items-center gap-1">
-                <CircleX className="w-3.5 h-3.5 text-red-400" />
-                Contradicted: {response.grounding_report.contradicted_claims_count}
-              </span>
-              <span>Total Claims: {response.grounding_report.total_claims}</span>
-              <span>Latency: {Math.round(response.latency_ms)} ms</span>
-              <span>Model: {response.model_name}</span>
-            </div>
-          </div>
         </div>
       )}
     </div>

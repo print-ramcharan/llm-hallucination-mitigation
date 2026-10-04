@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -28,9 +28,9 @@ class ExternalMemoryStore:
 
     def __init__(
         self,
-        db_path: Optional[Path | str] = None,
-        storage_dir: Optional[Path | str] = None,
-        embedding_engine: Optional[EmbeddingEngine] = None,
+        db_path: Path | str | None = None,
+        storage_dir: Path | str | None = None,
+        embedding_engine: EmbeddingEngine | None = None,
     ) -> None:
         self.storage_dir = Path(storage_dir) if storage_dir else Path("data/memory")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -43,8 +43,8 @@ class ExternalMemoryStore:
         self.vector_map_path = self.storage_dir / "memory_vector_map.json"
 
         # In-memory vector cache: memory_id -> embedding vector
-        self._memory_vectors: Dict[str, np.ndarray] = {}
-        self._summary_vectors: Dict[str, np.ndarray] = {}
+        self._memory_vectors: dict[str, np.ndarray] = {}
+        self._summary_vectors: dict[str, np.ndarray] = {}
 
         # Initialize SQLite schema
         self._init_db()
@@ -126,7 +126,7 @@ class ExternalMemoryStore:
         if self.vector_index_path.exists() and self.vector_map_path.exists():
             try:
                 vectors = np.load(str(self.vector_index_path))
-                with open(self.vector_map_path, "r", encoding="utf-8") as f:
+                with open(self.vector_map_path, encoding="utf-8") as f:
                     meta = json.load(f)
                 memory_ids = meta.get("memory_ids", [])
                 summary_ids = meta.get("summary_ids", [])
@@ -203,7 +203,7 @@ class ExternalMemoryStore:
             conn.commit()
         return session
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         """Retrieve a session by its ID."""
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -226,11 +226,11 @@ class ExternalMemoryStore:
             )
 
     def list_sessions(
-        self, user_id: Optional[str] = None, is_active: Optional[bool] = None
-    ) -> List[Session]:
+        self, user_id: str | None = None, is_active: bool | None = None
+    ) -> list[Session]:
         """List sessions optionally filtered by user ID and active status."""
         query = "SELECT * FROM sessions WHERE 1=1"
-        params: List[Any] = []
+        params: list[Any] = []
         if user_id:
             query += " AND user_id = ?"
             params.append(user_id)
@@ -239,7 +239,7 @@ class ExternalMemoryStore:
             params.append(1 if is_active else 0)
         query += " ORDER BY updated_at DESC"
 
-        sessions: List[Session] = []
+        sessions: list[Session] = []
         with self._get_connection() as conn:
             cursor = conn.execute(query, params)
             for row in cursor.fetchall():
@@ -401,7 +401,7 @@ class ExternalMemoryStore:
 
         return item
 
-    def get_memory_item(self, memory_id: str) -> Optional[EpisodicMemoryItem]:
+    def get_memory_item(self, memory_id: str) -> EpisodicMemoryItem | None:
         """Retrieve an episodic memory item by ID."""
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -412,9 +412,9 @@ class ExternalMemoryStore:
                 return None
             return self._row_to_memory_item(row)
 
-    def list_session_memories(self, session_id: str) -> List[EpisodicMemoryItem]:
+    def list_session_memories(self, session_id: str) -> list[EpisodicMemoryItem]:
         """List all episodic memories for a given session sorted chronologically."""
-        memories: List[EpisodicMemoryItem] = []
+        memories: list[EpisodicMemoryItem] = []
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM episodic_memories WHERE session_id = ? ORDER BY turn_index ASC",
@@ -520,9 +520,9 @@ class ExternalMemoryStore:
 
         return summary
 
-    def list_session_summaries(self, session_id: str) -> List[HierarchicalSummary]:
+    def list_session_summaries(self, session_id: str) -> list[HierarchicalSummary]:
         """Retrieve all hierarchical summaries for a session."""
-        summaries: List[HierarchicalSummary] = []
+        summaries: list[HierarchicalSummary] = []
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM hierarchical_summaries WHERE session_id = ? ORDER BY created_at DESC",
@@ -550,11 +550,11 @@ class ExternalMemoryStore:
     def search_memories(
         self,
         query: str,
-        session_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        session_id: str | None = None,
+        user_id: str | None = None,
         top_k: int = 3,
         min_similarity: float = 0.25,
-    ) -> Tuple[List[EpisodicMemoryItem], List[float]]:
+    ) -> tuple[list[EpisodicMemoryItem], list[float]]:
         """Perform semantic vector similarity search over past episodic memories.
 
         Falls back gracefully to keyword/token-overlap matching if vector search is unavailable.
@@ -566,7 +566,7 @@ class ExternalMemoryStore:
         all_candidates = []
         with self._get_connection() as conn:
             sql = "SELECT * FROM episodic_memories WHERE 1=1"
-            params: List[Any] = []
+            params: list[Any] = []
             if session_id:
                 sql += " AND session_id = ?"
                 params.append(session_id)
@@ -581,7 +581,7 @@ class ExternalMemoryStore:
             return [], []
 
         # 1. Try dense vector search using inner-product (cosine similarity)
-        scored_candidates: List[Tuple[EpisodicMemoryItem, float]] = []
+        scored_candidates: list[tuple[EpisodicMemoryItem, float]] = []
         try:
             query_vec = self.embedding_engine.embed_query(query)
             for item in all_candidates:
@@ -612,15 +612,15 @@ class ExternalMemoryStore:
     def search_summaries(
         self,
         query: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         top_k: int = 2,
         min_similarity: float = 0.25,
-    ) -> Tuple[List[HierarchicalSummary], List[float]]:
+    ) -> tuple[list[HierarchicalSummary], list[float]]:
         """Search persistent summaries matching query semantics."""
         all_summaries = []
         with self._get_connection() as conn:
             sql = "SELECT * FROM hierarchical_summaries WHERE 1=1"
-            params: List[Any] = []
+            params: list[Any] = []
             if session_id:
                 sql += " AND session_id = ?"
                 params.append(session_id)
@@ -642,7 +642,7 @@ class ExternalMemoryStore:
         if not all_summaries:
             return [], []
 
-        scored: List[Tuple[HierarchicalSummary, float]] = []
+        scored: list[tuple[HierarchicalSummary, float]] = []
         try:
             query_vec = self.embedding_engine.embed_query(query)
             for s in all_summaries:

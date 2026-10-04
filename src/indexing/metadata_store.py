@@ -48,7 +48,9 @@ class MetadataStore:
             }
 
             self._store[chunk_id] = record
-            self._doc_to_chunks.setdefault(doc_id, []).append(chunk_id)
+            doc_chunks = self._doc_to_chunks.setdefault(doc_id, [])
+            if chunk_id not in doc_chunks:
+                doc_chunks.append(chunk_id)
 
         self.save()
 
@@ -84,7 +86,7 @@ class MetadataStore:
         """Load metadata store from JSON."""
         if self.store_path.is_file():
             try:
-                with open(self.store_path, "r", encoding="utf-8") as f:
+                with open(self.store_path, encoding="utf-8") as f:
                     payload = json.load(f)
                     self._store = payload.get("store", {})
                     self._doc_to_chunks = payload.get("doc_to_chunks", {})

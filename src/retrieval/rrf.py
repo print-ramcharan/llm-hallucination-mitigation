@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from src.indexing.metadata_store import MetadataStore
 from src.retrieval.models import RetrievedCandidate
@@ -18,17 +18,17 @@ class RRFEngine:
     consistent, un-skewed rank aggregation across distinct retrieval mechanisms.
     """
 
-    def __init__(self, metadata_store: Optional[MetadataStore] = None) -> None:
+    def __init__(self, metadata_store: MetadataStore | None = None) -> None:
         self.metadata_store = metadata_store
 
     def fuse(
         self,
-        dense_results: List[Tuple[str, float]],
-        sparse_results: List[Tuple[str, float]],
+        dense_results: list[tuple[str, float]],
+        sparse_results: list[tuple[str, float]],
         top_k: int = 20,
         rrf_k: int = 60,
-        metadata_store: Optional[MetadataStore] = None,
-    ) -> List[RetrievedCandidate]:
+        metadata_store: MetadataStore | None = None,
+    ) -> list[RetrievedCandidate]:
         """Merge dense and sparse search rankings into a single unified candidate pool.
 
         Args:
@@ -44,37 +44,29 @@ class RRFEngine:
         store = metadata_store or self.metadata_store
 
         # Map: chunk_id -> dict with ranks, raw scores, and accumulated RRF score
-        candidates_map: Dict[str, Dict[str, Any]] = {}
+        candidates_map: dict[str, dict[str, Any]] = {}
 
-        # 1. Process dense rankings (1-indexed)
-        for rank_idx, (chunk_id, score) in enumerate(dense_results, start=1):
-            if chunk_id not in candidates_map:
-                candidates_map[chunk_id] = {
-                    "dense_rank": rank_idx,
-                    "dense_score": score,
-                    "sparse_rank": None,
-                    "sparse_score": None,
-                    "rrf_score": 1.0 / (rrf_k + rank_idx),
-                }
-            else:
-                candidates_map[chunk_id]["dense_rank"] = rank_idx
-                candidates_map[chunk_id]["dense_score"] = score
-                candidates_map[chunk_id]["rrf_score"] += 1.0 / (rrf_k + rank_idx)
-
-        # 2. Process sparse rankings (1-indexed)
-        for rank_idx, (chunk_id, score) in enumerate(sparse_results, start=1):
+        def _record_candidate(chunk_id: str, rank: int, score: float, prefix: str) -> None:
             if chunk_id not in candidates_map:
                 candidates_map[chunk_id] = {
                     "dense_rank": None,
                     "dense_score": None,
-                    "sparse_rank": rank_idx,
-                    "sparse_score": score,
-                    "rrf_score": 1.0 / (rrf_k + rank_idx),
+                    "sparse_rank": None,
+                    "sparse_score": None,
+                    "rrf_score": 0.0,
                 }
-            else:
-                candidates_map[chunk_id]["sparse_rank"] = rank_idx
-                candidates_map[chunk_id]["sparse_score"] = score
-                candidates_map[chunk_id]["rrf_score"] += 1.0 / (rrf_k + rank_idx)
+            entry = candidates_map[chunk_id]
+            entry[f"{prefix}_rank"] = rank
+            entry[f"{prefix}_score"] = score
+            entry["rrf_score"] += 1.0 / (rrf_k + rank)
+
+        # 1. Process dense rankings (1-indexed)
+        for rank_idx, (chunk_id, score) in enumerate(dense_results, start=1):
+            _record_candidate(chunk_id, rank_idx, score, "dense")
+
+        # 2. Process sparse rankings (1-indexed)
+        for rank_idx, (chunk_id, score) in enumerate(sparse_results, start=1):
+            _record_candidate(chunk_id, rank_idx, score, "sparse")
 
         # 3. Sort candidates descending by RRF score (secondary sort by raw scores for stability)
         sorted_chunk_items = sorted(
@@ -90,7 +82,7 @@ class RRFEngine:
         top_items = sorted_chunk_items[:top_k]
 
         # 5. Hydrate candidates with content and metadata from MetadataStore
-        fused_candidates: List[RetrievedCandidate] = []
+        fused_candidates: list[RetrievedCandidate] = []
         for chunk_id, stats in top_items:
             record = store.get(chunk_id) if store else None
 

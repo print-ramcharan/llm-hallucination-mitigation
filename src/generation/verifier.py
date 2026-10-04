@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
 
 from src.context.models import CompactedEvidence, OptimizedContext
 from src.generation.models import ClaimStatus, ClaimVerification, GroundingReport
@@ -26,7 +25,7 @@ class AntiHallucinationVerifier:
         self.default_tolerance = default_tolerance
 
     @staticmethod
-    def extract_claims(text: str) -> List[str]:
+    def extract_claims(text: str) -> list[str]:
         """Segment answer into atomic claims, stripping trailing citations."""
         # Split on sentence terminals
         raw_sentences = re.split(r"(?<=[.!?])\s+", text.strip())
@@ -39,7 +38,7 @@ class AntiHallucinationVerifier:
         return claims
 
     @staticmethod
-    def extract_citations(text: str) -> List[str]:
+    def extract_citations(text: str) -> list[str]:
         """Extract all bracketed citation tags (e.g. ['[Doc 1, Chunk 0]'])."""
         return re.findall(r"\[Doc\s+[^\]]+\]", text)
 
@@ -47,7 +46,7 @@ class AntiHallucinationVerifier:
         self,
         claim_text: str,
         evidence_text: str,
-    ) -> Tuple[ClaimStatus, float, Optional[str]]:
+    ) -> tuple[ClaimStatus, float, str | None]:
         """Evaluate NLI status between claim (hypothesis) and evidence (premise).
 
         Returns:
@@ -120,38 +119,37 @@ class AntiHallucinationVerifier:
                 round(confidence, 3),
                 f"Directly supported by evidence ({len(overlap)}/{len(content_tokens)} key factual terms matched).",
             )
-        elif overlap_ratio >= 0.25:
+        if overlap_ratio >= 0.25:
             # Weak or partial support
             return (
                 ClaimStatus.NEUTRAL,
                 0.60,
                 f"Partially matched evidence ({len(overlap)}/{len(content_tokens)} terms), but critical assertions lack direct support.",
             )
-        else:
-            return (
-                ClaimStatus.NEUTRAL,
-                0.85,
-                "Unsupported assertion: factual terms not found in the referenced evidence.",
-            )
+        return (
+            ClaimStatus.NEUTRAL,
+            0.85,
+            "Unsupported assertion: factual terms not found in the referenced evidence.",
+        )
 
     def verify_answer(
         self,
         answer: str,
-        context: Optional[OptimizedContext] = None,
-        evidence_items: Optional[List[CompactedEvidence]] = None,
-        tolerance: Optional[float] = None,
+        context: OptimizedContext | None = None,
+        evidence_items: list[CompactedEvidence] | None = None,
+        tolerance: float | None = None,
     ) -> GroundingReport:
         """Execute comprehensive NLI verification across all claims in the generated answer."""
         tol = tolerance if tolerance is not None else self.default_tolerance
 
         # Map citation tags to evidence items
-        items: List[CompactedEvidence] = []
+        items: list[CompactedEvidence] = []
         if context is not None and context.evidence_items:
             items = context.evidence_items
         elif evidence_items:
             items = evidence_items
 
-        tag_to_evidence: Dict[str, CompactedEvidence] = {}
+        tag_to_evidence: dict[str, CompactedEvidence] = {}
         for item in items:
             tag_to_evidence[item.citation_tag] = item
             # Also support normalised tag (e.g. without extra spaces)
@@ -159,8 +157,8 @@ class AntiHallucinationVerifier:
             tag_to_evidence[norm_tag] = item
 
         all_citations = self.extract_citations(answer)
-        verified_citations: List[str] = []
-        unverified_citations: List[str] = []
+        verified_citations: list[str] = []
+        unverified_citations: list[str] = []
 
         for cite in all_citations:
             norm_cite = re.sub(r"\s+", " ", cite)
@@ -185,7 +183,7 @@ class AntiHallucinationVerifier:
                 unverified_citations=unverified_citations,
             )
 
-        verifications: List[ClaimVerification] = []
+        verifications: list[ClaimVerification] = []
         entailed_count = 0
         neutral_count = 0
         contradicted_count = 0
@@ -197,7 +195,7 @@ class AntiHallucinationVerifier:
 
         for claim in claims:
             claim_cites = self.extract_citations(claim)
-            supporting_item: Optional[CompactedEvidence] = None
+            supporting_item: CompactedEvidence | None = None
 
             # Look up cited evidence
             for c in claim_cites:

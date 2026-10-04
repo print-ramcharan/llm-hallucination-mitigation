@@ -3,21 +3,54 @@
 from __future__ import annotations
 
 import re
-from typing import List, Set, Tuple
 
-# Common stop words to exclude when calculating query term relevance
+# Common stop words and document-framing meta words to exclude
 _STOP_WORDS = {
     "a", "an", "the", "and", "or", "but", "if", "then", "of", "at",
     "by", "for", "with", "about", "against", "between", "into", "through",
     "during", "before", "after", "above", "below", "to", "from", "up",
     "down", "in", "out", "on", "off", "over", "under", "again", "further",
-    "then", "once", "here", "there", "when", "where", "why", "how", "all",
+    "once", "here", "there", "when", "where", "why", "how", "all",
     "any", "both", "each", "few", "more", "most", "other", "some", "such",
     "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
     "s", "t", "can", "will", "just", "don", "should", "now", "is", "are",
     "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
     "did", "doing", "i", "me", "my", "we", "our", "you", "your", "he", "him",
     "his", "she", "her", "it", "its", "they", "them", "their", "what", "which",
+    # Document framing / meta terms
+    "document", "documents", "doc", "docs", "file", "files",
+    "text", "texts", "article", "articles", "paper", "papers",
+    "passage", "passages", "content", "contents", "context", "contexts",
+    "mention", "mentions", "mentioned", "mentioning",
+    "give", "given", "provide", "provided", "state", "stated", "states",
+    "tell", "told", "say", "said", "says", "list", "listed", "lists",
+    "show", "shows", "describe", "describes", "explain", "explains",
+}
+
+_SEMANTIC_SYNONYMS: dict[str, set[str]] = {
+    "skill": {
+        "qualification", "qualifications", "requirement", "requirements",
+        "competency", "competencies", "proficiency", "proficiencies",
+        "ability", "abilities", "knowledge", "fundamentals", "expertise",
+        "experience", "programming", "technology", "technologies", "tools",
+        "python", "sql", "engineering", "responsibilities", "duties",
+    },
+    "skills": {
+        "qualification", "qualifications", "requirement", "requirements",
+        "competency", "competencies", "proficiency", "proficiencies",
+        "ability", "abilities", "knowledge", "fundamentals", "expertise",
+        "experience", "programming", "technology", "technologies", "tools",
+        "python", "sql", "engineering", "responsibilities", "duties",
+    },
+    "qualification": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education"},
+    "qualifications": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education"},
+    "responsibility": {"duties", "tasks", "role", "work", "responsibilities", "solutions", "develop", "build"},
+    "responsibilities": {"duties", "tasks", "role", "work", "responsibility", "solutions", "develop", "build"},
+    "salary": {"compensation", "pay", "rate", "wage", "wages", "stipend", "remuneration", "benefits"},
+    "leave": {"vacation", "pto", "holiday", "holidays", "absence", "time off"},
+    "vacation": {"leave", "pto", "holiday", "holidays", "absence", "time off"},
+    "benefit": {"perk", "perks", "insurance", "401k", "pension", "health", "dental"},
+    "benefits": {"perk", "perks", "insurance", "401k", "pension", "health", "dental"},
 }
 
 _SENTENCE_SPLIT_REGEX = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"\'\(\[])")
@@ -31,14 +64,14 @@ class SentencePruner:
         self.default_min_salience = default_min_salience
 
     @staticmethod
-    def split_sentences(text: str) -> List[str]:
+    def split_sentences(text: str) -> list[str]:
         """Split text into individual sentences while preserving sentence content."""
         if not text or not text.strip():
             return []
 
         # First split on line breaks to preserve structural paragraphs
         lines = [line.strip() for line in text.splitlines() if line.strip()]
-        sentences: List[str] = []
+        sentences: list[str] = []
 
         for line in lines:
             parts = _SENTENCE_SPLIT_REGEX.split(line)
@@ -50,16 +83,16 @@ class SentencePruner:
         return sentences
 
     @staticmethod
-    def _extract_terms(text: str) -> Set[str]:
+    def _extract_terms(text: str) -> set[str]:
         """Extract lowercase content terms excluding stop words."""
         words = _WORD_REGEX.findall(text.lower())
         return {w for w in words if w not in _STOP_WORDS and len(w) > 1}
 
-    def compute_salience(self, query_terms: Set[str], sentence: str) -> float:
+    def compute_salience(self, query_terms: set[str], sentence: str) -> float:
         """Compute the informational salience score of a sentence relative to the query.
 
         Combines:
-          1. Query term overlap ratio (recall of query keywords)
+          1. Query term and synonym overlap ratio
           2. Specific factual token density (numbers, currencies, percentages, dates)
         """
         if not query_terms or not sentence.strip():
@@ -69,12 +102,21 @@ class SentencePruner:
         if not sentence_terms:
             return 0.0
 
-        # Term overlap
+        # Direct term overlap
         shared_terms = query_terms.intersection(sentence_terms)
+
+        # Semantic synonym & stem expansion check
+        if not shared_terms:
+            for qt in query_terms:
+                stem = qt.rstrip("s").rstrip("es")
+                syns = _SEMANTIC_SYNONYMS.get(qt, set()) | _SEMANTIC_SYNONYMS.get(stem, set())
+                matched_syns = syns.intersection(sentence_terms)
+                if matched_syns or any(st.startswith(stem) for st in sentence_terms if len(stem) >= 4):
+                    shared_terms.add(qt)
+
         term_overlap = len(shared_terms) / max(len(query_terms), 1)
 
         # Factual density boost (digits, currency, percentages, e.g. "20 days", "$500")
-        # Only boost factual density if the sentence shares topical terms with the query!
         density_boost = 0.0
         if shared_terms:
             has_digits = bool(re.search(r"\b\d+\b", sentence))
@@ -94,7 +136,7 @@ class SentencePruner:
         query: str,
         text: str,
         min_salience: float | None = None,
-    ) -> Tuple[str, List[str]]:
+    ) -> tuple[str, list[str]]:
         """Filter out non-relevant sentences from a chunk, preserving key evidence.
 
         Args:
@@ -117,18 +159,24 @@ class SentencePruner:
 
         query_terms = self._extract_terms(query)
 
-        scored_sentences: List[Tuple[str, float]] = []
+        scored_sentences: list[tuple[str, float]] = []
         for s in sentences:
             score = self.compute_salience(query_terms, s)
             scored_sentences.append((s, score))
 
         # Filter sentences by salience threshold
-        kept: List[str] = [s for s, score in scored_sentences if score >= threshold]
+        kept: list[str] = [s for s, score in scored_sentences if score >= threshold]
 
-        # Fallback preservation: If all sentences fell below threshold, keep top-scoring sentence
+        # Fallback preservation: If no sentence met threshold
         if not kept:
-            best_sentence = max(scored_sentences, key=lambda item: item[1])[0]
-            kept = [best_sentence]
+            # First preference: sentences with positive salience
+            positive_sentences = [s for s, score in scored_sentences if score > 0]
+            if positive_sentences:
+                kept = positive_sentences
+            else:
+                # If all scored 0 (e.g. semantic conceptual query), retain full sentences
+                # so crucial domain context is never discarded
+                kept = sentences
 
         compacted = " ".join(kept)
         return compacted, kept

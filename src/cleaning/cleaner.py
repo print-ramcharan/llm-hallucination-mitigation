@@ -209,9 +209,7 @@ class DocumentCleaner:
         repaired_text = self._repair_soft_linebreaks(cleaned_lines)
 
         # 5. Normalize extra whitespace (collapse 3+ newlines to 2)
-        final_text = re.sub(r"\n{3,}", "\n\n", repaired_text).strip()
-
-        return final_text
+        return re.sub(r"\n{3,}", "\n\n", repaired_text).strip()
 
     def is_table_row(self, line: str) -> bool:
         """Detect if a line is a Markdown table row or separator."""
@@ -314,7 +312,7 @@ class DocumentCleaner:
         if len(pages_seen) < 2:
             return set(), set()
 
-        for page_num, el_list in page_elements.items():
+        for el_list in page_elements.values():
             if not el_list:
                 continue
 

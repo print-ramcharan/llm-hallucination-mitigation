@@ -1,0 +1,250 @@
+{
+  "id": "doc_059298644052fa91",
+  "content": "Data and AI Engineering Intern\n\nElectronic Arts is seeking a Data and AI Engineering Intern to join our Data and Analytics team. This internship focuses on applying Generative AI and agentic engineering approaches to modern data engineering, analytics, and automation.\n\nYou will work with data engineers, architects, and analysts to build AI-assisted data solutions using Python, SQL, Large Language Models, and cloud data platforms. You will explore how AI agents can interpret requirements, generate and validate code, automate data-quality checks, create technical documentation, investigate anomalies, and support pipeline monitoring with appropriate human oversight.\n\nKey Responsibilities\n\nDevelop Python and SQL solutions for data ingestion, transformation, validation, and analysis.\n\nBuild prototypes using LLMs, prompt engineering, Retrieval-Augmented Generation, embeddings, vector search, tool calling, and agentic workflows.\n\nAssist in developing scalable ETL/ELT pipelines, data models, APIs, and reusable data products.\n\nApply testing, data quality, security, governance, and responsible AI practices.\n\nCollaborate with technical and business teams and present findings, prototypes, and recommendations.\n\nRequired Qualifications\n\nPursuing a bachelor’s Degree, Data Science, Artificial Intelligence, Engineering, or a related field.\n\nStrong fundamentals in Python, SQL, programming, and problem solving.\n\nBasic understanding of databases, data pipelines, APIs, and Generative AI.\n\nFamiliarity with Git and collaborative software development.\n\nPreferred Qualifications\n\nExposure to Snowflake, Databricks, Spark, dbt, Airflow, Lang Chain, Lang Graph, Stream lit, cloud platforms, or vector databases is advantageous. Machine Learning experience, including scikit-learn, Py Torch, or TensorFlow, is an additional advantage.",
+  "metadata": {
+    "document_id": "doc_059298644052fa91",
+    "source_name": "JD_EA_Data and AI Engineering Intern.docx",
+    "file_type": "docx",
+    "file_size_bytes": 16593,
+    "content_hash": "059298644052fa91e6a4623b22aa24f614d9952ad492d5343176842f4707e61e",
+    "char_count": 1832,
+    "word_count": 234,
+    "element_count": 16,
+    "chunk_count": 1,
+    "page_count": null,
+    "created_at": "2026-10-04T06:33:19.224202+00:00",
+    "extra": {
+      "author": "Singh, Rachit",
+      "created": "2026-08-31 08:08:00+00:00",
+      "modified": "2026-08-31 08:09:00+00:00",
+      "revision": "4"
+    }
+  },
+  "elements": [
+    {
+      "id": "doc_059298644052fa91_el_0",
+      "element_type": "paragraph",
+      "content": "Data and AI Engineering Intern",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 30,
+      "word_count": 5,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_1",
+      "element_type": "paragraph",
+      "content": "Electronic Arts is seeking a Data and AI Engineering Intern to join our Data and Analytics team. This internship focuses on applying Generative AI and agentic engineering approaches to modern data engineering, analytics, and automation.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 236,
+      "word_count": 35,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_2",
+      "element_type": "paragraph",
+      "content": "You will work with data engineers, architects, and analysts to build AI-assisted data solutions using Python, SQL, Large Language Models, and cloud data platforms. You will explore how AI agents can interpret requirements, generate and validate code, automate data-quality checks, create technical documentation, investigate anomalies, and support pipeline monitoring with appropriate human oversight.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 401,
+      "word_count": 53,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_3",
+      "element_type": "paragraph",
+      "content": "Key Responsibilities",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 20,
+      "word_count": 2,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_4",
+      "element_type": "paragraph",
+      "content": "Develop Python and SQL solutions for data ingestion, transformation, validation, and analysis.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 94,
+      "word_count": 12,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_5",
+      "element_type": "paragraph",
+      "content": "Build prototypes using LLMs, prompt engineering, Retrieval-Augmented Generation, embeddings, vector search, tool calling, and agentic workflows.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 144,
+      "word_count": 16,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_6",
+      "element_type": "paragraph",
+      "content": "Assist in developing scalable ETL/ELT pipelines, data models, APIs, and reusable data products.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 95,
+      "word_count": 13,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_7",
+      "element_type": "paragraph",
+      "content": "Apply testing, data quality, security, governance, and responsible AI practices.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 80,
+      "word_count": 10,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_8",
+      "element_type": "paragraph",
+      "content": "Collaborate with technical and business teams and present findings, prototypes, and recommendations.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 100,
+      "word_count": 12,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_9",
+      "element_type": "paragraph",
+      "content": "Required Qualifications",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 23,
+      "word_count": 2,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_10",
+      "element_type": "paragraph",
+      "content": "Pursuing a bachelor’s Degree, Data Science, Artificial Intelligence, Engineering, or a related field.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 101,
+      "word_count": 13,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_11",
+      "element_type": "paragraph",
+      "content": "Strong fundamentals in Python, SQL, programming, and problem solving.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 69,
+      "word_count": 9,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_12",
+      "element_type": "paragraph",
+      "content": "Basic understanding of databases, data pipelines, APIs, and Generative AI.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 74,
+      "word_count": 10,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_13",
+      "element_type": "paragraph",
+      "content": "Familiarity with Git and collaborative software development.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 60,
+      "word_count": 7,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_14",
+      "element_type": "paragraph",
+      "content": "Preferred Qualifications",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 24,
+      "word_count": 2,
+      "metadata": {
+        "style": "Normal"
+      }
+    },
+    {
+      "id": "doc_059298644052fa91_el_15",
+      "element_type": "paragraph",
+      "content": "Exposure to Snowflake, Databricks, Spark, dbt, Airflow, Lang Chain, Lang Graph, Stream lit, cloud platforms, or vector databases is advantageous. Machine Learning experience, including scikit-learn, Py Torch, or TensorFlow, is an additional advantage.",
+      "page_number": null,
+      "section_title": null,
+      "char_count": 251,
+      "word_count": 33,
+      "metadata": {
+        "style": "Normal"
+      }
+    }
+  ],
+  "chunks": [
+    {
+      "id": "jd_ea_0_001",
+      "document_id": "doc_059298644052fa91",
+      "chunk_index": 0,
+      "content": "Data and AI Engineering Intern\n\nElectronic Arts is seeking a Data and AI Engineering Intern to join our Data and Analytics team. This internship focuses on applying Generative AI and agentic engineering approaches to modern data engineering, analytics, and automation.\n\nYou will work with data engineers, architects, and analysts to build AI-assisted data solutions using Python, SQL, Large Language Models, and cloud data platforms. You will explore how AI agents can interpret requirements, generate and validate code, automate data-quality checks, create technical documentation, investigate anomalies, and support pipeline monitoring with appropriate human oversight.\n\nKey Responsibilities\n\nDevelop Python and SQL solutions for data ingestion, transformation, validation, and analysis.\n\nBuild prototypes using LLMs, prompt engineering, Retrieval-Augmented Generation, embeddings, vector search, tool calling, and agentic workflows.\n\nAssist in developing scalable ETL/ELT pipelines, data models, APIs, and reusable data products.\n\nApply testing, data quality, security, governance, and responsible AI practices.\n\nCollaborate with technical and business teams and present findings, prototypes, and recommendations.\n\nRequired Qualifications\n\nPursuing a bachelor’s Degree, Data Science, Artificial Intelligence, Engineering, or a related field.\n\nStrong fundamentals in Python, SQL, programming, and problem solving.\n\nBasic understanding of databases, data pipelines, APIs, and Generative AI.\n\nFamiliarity with Git and collaborative software development.\n\nPreferred Qualifications\n\nExposure to Snowflake, Databricks, Spark, dbt, Airflow, Lang Chain, Lang Graph, Stream lit, cloud platforms, or vector databases is advantageous. Machine Learning experience, including scikit-learn, Py Torch, or TensorFlow, is an additional advantage.",
+      "char_count": 1832,
+      "word_count": 234,
+      "token_count": 314,
+      "page_numbers": [],
+      "section_titles": [],
+      "metadata": {
+        "chunk_id": "jd_ea_0_001",
+        "source": "JD_EA_Data and AI Engineering Intern.docx",
+        "page": null,
+        "section": "General",
+        "document_type": "GENERAL_DOC",
+        "created_at": "2026-10-04",
+        "token_count": 314,
+        "char_count": 1832,
+        "word_count": 234,
+        "overlap_token_count": 0,
+        "has_table": false,
+        "has_code": false,
+        "author": "Singh, Rachit",
+        "created": "2026-08-31 08:08:00+00:00",
+        "modified": "2026-08-31 08:09:00+00:00",
+        "revision": "4",
+        "prev_chunk_id": null,
+        "next_chunk_id": null
+      }
+    }
+  ]
+}

@@ -43,7 +43,10 @@ data/processed/
 # Models and vector indexes
 models/
 indexes/
+data/indexes/
+data/memory/
 *.faiss
+*.db
 
 # Experiment outputs
 results/

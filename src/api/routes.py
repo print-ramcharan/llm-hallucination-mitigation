@@ -69,12 +69,12 @@ async def upload_document(
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=str(exc),
-        )
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to parse document '{filename}': {exc!s}",
-        )
+        ) from exc
 
 
 @router.post("/text", response_model=IngestResponse, status_code=status.HTTP_201_CREATED)
@@ -115,7 +115,7 @@ def ingest_text(payload: RawTextInput) -> IngestResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest text: {exc!s}",
-        )
+        ) from exc
 
 
 @router.get("/documents", response_model=list[DocumentMetadata])

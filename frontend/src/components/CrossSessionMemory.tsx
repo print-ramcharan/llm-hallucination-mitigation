@@ -5,7 +5,6 @@ import {
   Brain,
   Download,
   FileCheck2,
-  FolderPlus,
   Globe,
   Lock,
   Plus,
@@ -242,6 +241,7 @@ export function CrossSessionMemory() {
                 <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">
                   Session Registry
                 </h2>
+                {isLoading && <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin" />}
               </div>
               <button
                 onClick={() => setIsCreatingSession(true)}
@@ -404,7 +404,11 @@ export function CrossSessionMemory() {
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Search Input */}
             <form onSubmit={handleSearch} className="flex-1 relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+              {isSearching ? (
+                <RefreshCw className="w-4 h-4 absolute left-3 top-3 text-indigo-400 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+              )}
               <input
                 type="text"
                 value={searchQuery}

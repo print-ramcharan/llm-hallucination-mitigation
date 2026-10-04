@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Set, Tuple
 
 _WORD_REGEX = re.compile(r"\b[a-zA-Z0-9_\-]+\b")
 
@@ -19,12 +18,12 @@ class ContextDeduplicator:
         self.default_similarity_threshold = default_similarity_threshold
 
     @staticmethod
-    def _to_term_set(sentence: str) -> Set[str]:
+    def _to_term_set(sentence: str) -> set[str]:
         """Convert a sentence into a set of normalized lowercase words."""
         return set(_WORD_REGEX.findall(sentence.lower()))
 
     @classmethod
-    def jaccard_similarity(cls, set_a: Set[str], set_b: Set[str]) -> float:
+    def jaccard_similarity(cls, set_a: set[str], set_b: set[str]) -> float:
         """Compute Jaccard token overlap similarity between two word sets."""
         if not set_a or not set_b:
             return 0.0
@@ -36,10 +35,10 @@ class ContextDeduplicator:
 
     def deduplicate_sentences(
         self,
-        sentences: List[str],
-        seen_sentence_terms: List[Set[str]],
+        sentences: list[str],
+        seen_sentence_terms: list[set[str]],
         similarity_threshold: float | None = None,
-    ) -> Tuple[List[str], int]:
+    ) -> tuple[list[str], int]:
         """Filter out sentences that duplicate previously seen sentences in the context pool.
 
         Args:
@@ -55,7 +54,7 @@ class ContextDeduplicator:
             if similarity_threshold is None
             else similarity_threshold
         )
-        unique_sentences: List[str] = []
+        unique_sentences: list[str] = []
         pruned_count = 0
 
         for sentence in sentences:

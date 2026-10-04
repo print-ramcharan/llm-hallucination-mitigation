@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Tuple
+from typing import Any
 
 
 class FilterExtractor:
@@ -46,10 +46,10 @@ class FilterExtractor:
         sorted_depts = sorted(self.KNOWN_DEPARTMENTS.keys(), key=len, reverse=True)
         self.dept_pattern = re.compile(r"\b(" + "|".join(re.escape(d) for d in sorted_depts) + r")\b", re.IGNORECASE)
 
-    def extract(self, query: str) -> Tuple[str, Dict[str, Any]]:
+    def extract(self, query: str) -> tuple[str, dict[str, Any]]:
         """Extract metadata filters and return (cleaned_search_query, filters)."""
         raw_q = query.strip()
-        filters: Dict[str, Any] = {}
+        filters: dict[str, Any] = {}
 
         # 1. Extract Year
         year_match = self.year_pattern.search(raw_q)
@@ -69,7 +69,7 @@ class FilterExtractor:
 
         return cleaned_query, filters
 
-    def _clean_search_query(self, query: str, filters: Dict[str, Any]) -> str:
+    def _clean_search_query(self, query: str, filters: dict[str, Any]) -> str:
         """Derive an optimal search query representation based on extracted entities."""
         q = query.strip()
 
@@ -108,6 +108,20 @@ class FilterExtractor:
         # Remove years from search query if extracted
         if "year" in filters:
             q = re.sub(r"\b" + str(filters["year"]) + r"\b", "", q)
+
+        # Remove trailing document reference noise (e.g. "mentioned in the document", "in the text")
+        q = re.sub(
+            r"\s+(?:mentioned\s+in|stated\s+in|listed\s+in|given\s+in|described\s+in|found\s+in)\s+(?:the\s+)?(?:document|doc|file|text|passage|paper|pdf|docx)s?$",
+            "",
+            q,
+            flags=re.IGNORECASE,
+        )
+        q = re.sub(
+            r"\s+in\s+(?:the\s+)?(?:document|doc|file|text|passage|paper|pdf|docx)s?$",
+            "",
+            q,
+            flags=re.IGNORECASE,
+        )
 
         # Remove question conversational prefixes
         q = re.sub(r"^(?:what\s+(?:is|was|are|were)|tell\s+me\s+about|how\s+does|how\s+do)\s+(?:our\s+|the\s+)?", "", q, flags=re.IGNORECASE)

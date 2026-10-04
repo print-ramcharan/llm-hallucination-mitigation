@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from src.context.models import CompactedEvidence, OptimizedContext
 from src.query_processing.models import ConversationTurn
 
@@ -34,13 +32,13 @@ class GroundedPromptSynthesizer:
         "5. Concise & Objective: Keep your response direct, structured, and free of conversational filler."
     )
 
-    def __init__(self, system_prompt: Optional[str] = None) -> None:
+    def __init__(self, system_prompt: str | None = None) -> None:
         self.system_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
 
     def build_evidence_block(
         self,
-        context: Optional[OptimizedContext] = None,
-        evidence_items: Optional[List[CompactedEvidence]] = None,
+        context: OptimizedContext | None = None,
+        evidence_items: list[CompactedEvidence] | None = None,
     ) -> str:
         """Render context passages with clear citation identifier headers."""
         if context is not None and context.formatted_prompt_context:
@@ -65,7 +63,7 @@ class GroundedPromptSynthesizer:
         return "\n\n".join(blocks)
 
     def format_conversation_history(
-        self, conversation_history: Optional[List[ConversationTurn]] = None
+        self, conversation_history: list[ConversationTurn] | None = None
     ) -> str:
         """Format prior conversational turns for conversational context injection."""
         if not conversation_history:
@@ -81,10 +79,10 @@ class GroundedPromptSynthesizer:
     def synthesize_prompt(
         self,
         query: str,
-        context: Optional[OptimizedContext] = None,
-        evidence_items: Optional[List[CompactedEvidence]] = None,
-        conversation_history: Optional[List[ConversationTurn]] = None,
-        memory_context: Optional[str] = None,
+        context: OptimizedContext | None = None,
+        evidence_items: list[CompactedEvidence] | None = None,
+        conversation_history: list[ConversationTurn] | None = None,
+        memory_context: str | None = None,
     ) -> str:
         """Synthesize the complete grounded user prompt."""
         evidence_block = self.build_evidence_block(context=context, evidence_items=evidence_items)

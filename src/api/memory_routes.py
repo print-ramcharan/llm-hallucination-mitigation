@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
@@ -31,22 +31,22 @@ class CreateSessionRequest(BaseModel):
 
     title: str = Field(default="New Session", description="Session title.")
     user_id: str = Field(default="default_user", description="User profile identifier.")
-    active_document_ids: List[str] = Field(
+    active_document_ids: list[str] = Field(
         default_factory=list,
         description="Optional active document IDs to associate with this session.",
     )
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Session metadata.")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Session metadata.")
 
 
 class UpdateSessionRequest(BaseModel):
     """Payload to update session metadata."""
 
-    title: Optional[str] = Field(default=None, description="Updated session title.")
-    active_document_ids: Optional[List[str]] = Field(
+    title: str | None = Field(default=None, description="Updated session title.")
+    active_document_ids: list[str] | None = Field(
         default=None, description="Updated list of active document IDs."
     )
-    is_active: Optional[bool] = Field(default=None, description="Active status.")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Extra metadata.")
+    is_active: bool | None = Field(default=None, description="Active status.")
+    metadata: dict[str, Any] | None = Field(default=None, description="Extra metadata.")
 
 
 class SessionDetailsResponse(BaseModel):
@@ -54,8 +54,8 @@ class SessionDetailsResponse(BaseModel):
 
     session: Session
     permissions: MemoryPermissions
-    turns: List[EpisodicMemoryItem]
-    summaries: List[HierarchicalSummary]
+    turns: list[EpisodicMemoryItem]
+    summaries: list[HierarchicalSummary]
 
 
 class PostInferenceSyncRequest(BaseModel):
@@ -64,20 +64,20 @@ class PostInferenceSyncRequest(BaseModel):
     session_id: str = Field(..., description="Target session ID.")
     query: str = Field(..., description="User query.")
     answer: str = Field(..., description="Generated answer.")
-    intent: Optional[str] = Field(default=None, description="Detected intent.")
-    verified_facts: List[str] = Field(
+    intent: str | None = Field(default=None, description="Detected intent.")
+    verified_facts: list[str] = Field(
         default_factory=list,
         description="Verified factual claims.",
     )
-    citations: List[str] = Field(
+    citations: list[str] = Field(
         default_factory=list,
         description="Citation tags referenced.",
     )
-    referenced_doc_ids: List[str] = Field(
+    referenced_doc_ids: list[str] = Field(
         default_factory=list,
         description="Referenced document IDs.",
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=lambda: ["qa_interaction"],
         description="Categorical tags.",
     )
@@ -91,14 +91,14 @@ class PostInferenceSyncRequest(BaseModel):
 
 @router.get(
     "/sessions",
-    response_model=List[Session],
+    response_model=list[Session],
     status_code=status.HTTP_200_OK,
     summary="List all conversational sessions",
 )
 def list_sessions(
-    user_id: Optional[str] = Query(default=None, description="Filter by user ID"),
-    is_active: Optional[bool] = Query(default=None, description="Filter by active status"),
-) -> List[Session]:
+    user_id: str | None = Query(default=None, description="Filter by user ID"),
+    is_active: bool | None = Query(default=None, description="Filter by active status"),
+) -> list[Session]:
     """Retrieve all sessions ordered by most recently updated."""
     return default_session_registry.list_sessions(user_id=user_id, is_active=is_active)
 
@@ -170,7 +170,7 @@ def update_session(session_id: str, payload: UpdateSessionRequest) -> Session:
     status_code=status.HTTP_200_OK,
     summary="Delete a session and all its associated memories",
 )
-def delete_session(session_id: str) -> Dict[str, Any]:
+def delete_session(session_id: str) -> dict[str, Any]:
     """Permanently delete a session, its permissions, and episodic memory entries."""
     deleted = default_session_registry.delete_session(session_id)
     if not deleted:
@@ -232,7 +232,7 @@ def update_session_permissions(
     status_code=status.HTTP_200_OK,
     summary="Clear all episodic memories and summaries for a session",
 )
-def clear_session_memory(session_id: str) -> Dict[str, Any]:
+def clear_session_memory(session_id: str) -> dict[str, Any]:
     """Wipe memories for a session without deleting the session itself."""
     session = default_session_registry.get_session(session_id)
     if not session:
@@ -269,7 +269,7 @@ def force_session_summary(session_id: str) -> HierarchicalSummary:
 )
 def export_session_memory(
     session_id: str,
-    format: str = Query(default="json", regex="^(json|markdown)$"),
+    format: str = Query(default="json", pattern=r"^(json|markdown)$"),
 ):
     """Export the session history, verified facts, and summaries."""
     export_data = default_session_registry.export_session_memory(session_id)
@@ -342,9 +342,9 @@ def capture_web_context(payload: WebContextCaptureRequest) -> EpisodicMemoryItem
 )
 def pre_inference_sync(
     query: str = Query(..., description="Current query"),
-    session_id: Optional[str] = Query(default=None, description="Session ID"),
+    session_id: str | None = Query(default=None, description="Session ID"),
     user_id: str = Query(default="default_user", description="User ID"),
-    max_tokens: Optional[int] = Query(default=None, description="Max token budget"),
+    max_tokens: int | None = Query(default=None, description="Max token budget"),
 ) -> MemorySyncContext:
     """Preview or retrieve the compact memory block that will be injected before inference."""
     return default_memory_synchronizer.pre_inference_sync(
@@ -385,7 +385,7 @@ def post_inference_sync(payload: PostInferenceSyncRequest) -> EpisodicMemoryItem
     status_code=status.HTTP_200_OK,
     summary="Get status and telemetry of external memory store",
 )
-def get_memory_status() -> Dict[str, Any]:
+def get_memory_status() -> dict[str, Any]:
     """Retrieve memory status, active session counts, and storage directories."""
     sessions = default_memory_store.list_sessions()
     active_sessions = [s for s in sessions if s.is_active]

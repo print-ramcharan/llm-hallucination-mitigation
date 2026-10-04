@@ -58,7 +58,9 @@ class BM25Index:
             tokens = bm25_tokenize(chunk.content)
             self._chunk_ids.append(chunk_id)
             self._tokenized_corpus.append(tokens)
-            self._doc_to_chunks.setdefault(doc_id, []).append(chunk_id)
+            doc_chunks = self._doc_to_chunks.setdefault(doc_id, [])
+            if chunk_id not in doc_chunks:
+                doc_chunks.append(chunk_id)
 
         # Re-fit BM25 on updated corpus
         if self._tokenized_corpus:
@@ -102,7 +104,7 @@ class BM25Index:
         new_chunk_ids: list[str] = []
         new_tokenized_corpus: list[list[str]] = []
 
-        for cid, tokens in zip(self._chunk_ids, self._tokenized_corpus):
+        for cid, tokens in zip(self._chunk_ids, self._tokenized_corpus, strict=True):
             if cid not in chunks_to_remove:
                 new_chunk_ids.append(cid)
                 new_tokenized_corpus.append(tokens)

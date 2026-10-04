@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -33,7 +33,7 @@ class ProcessedQuery(BaseModel):
     rewritten_query: str = Field(..., description="Contextually enriched query resolving anaphoras and ellipsis.")
     query: str = Field(..., description="Cleaned, distilled search query optimized for vector and BM25 indexing.")
     intent: QueryIntent = Field(QueryIntent.INFORMATIONAL, description="Detected intent of the query.")
-    filters: Dict[str, Any] = Field(default_factory=dict, description="Structured metadata filters (e.g. year, department).")
+    filters: dict[str, Any] = Field(default_factory=dict, description="Structured metadata filters (e.g. year, department).")
     is_conversational: bool = Field(False, description="Flag indicating if conversation history influenced this query.")
-    extracted_keywords: List[str] = Field(default_factory=list, description="Key domain/entity tokens identified.")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Supplementary debugging and trace info.")
+    extracted_keywords: list[str] = Field(default_factory=list, description="Key domain/entity tokens identified.")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Supplementary debugging and trace info.")

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
 
 from src.query_processing.models import ConversationTurn
 
@@ -27,7 +26,7 @@ class QueryRewriter:
     def __init__(self) -> None:
         self._compiled_prefixes = [re.compile(p, re.IGNORECASE) for p in self.CONVERSATIONAL_PREFIXES]
 
-    def extract_main_subject(self, text: str) -> Optional[str]:
+    def extract_main_subject(self, text: str) -> str | None:
         """Extract dominant topic or subject phrase from a conversational turn."""
         cleaned = text.strip()
         for pat in self._compiled_prefixes:
@@ -44,7 +43,7 @@ class QueryRewriter:
         words = cleaned.split()
         return " ".join(words[:4]) if words else None
 
-    def rewrite(self, query: str, history: Optional[List[ConversationTurn]] = None) -> str:
+    def rewrite(self, query: str, history: list[ConversationTurn] | None = None) -> str:
         """Enrich a conversational query by expanding ellipsis and pronoun references."""
         raw_query = query.strip()
         if not history:
@@ -70,7 +69,7 @@ class QueryRewriter:
                 # Formulate "What is the employee sick leave policy?"
                 prefix = "employee " if "employee" in (last_user_turn or "").lower() or (last_asst_turn and "employee" in last_asst_turn.lower()) else ""
                 return f"What is the {prefix}{target} policy?"
-            elif subject:
+            if subject:
                 # Merge target with context subject
                 return f"What is the {target} regarding {subject}?"
             return f"What is the policy for {target}?"

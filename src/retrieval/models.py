@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,23 +16,23 @@ class RetrievedCandidate(BaseModel):
     content: str = Field(..., description="Text content of the retrieved chunk.")
     document_id: str = Field(..., description="Parent document identifier.")
     chunk_index: int = Field(default=0, description="0-indexed position within document.")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Standardized chunk metadata tags (e.g. source, page, section, doc_type).",
     )
-    dense_rank: Optional[int] = Field(
+    dense_rank: int | None = Field(
         default=None,
         description="1-based rank in dense vector retrieval (None if not retrieved by dense search).",
     )
-    sparse_rank: Optional[int] = Field(
+    sparse_rank: int | None = Field(
         default=None,
         description="1-based rank in sparse BM25 retrieval (None if not retrieved by sparse search).",
     )
-    dense_score: Optional[float] = Field(
+    dense_score: float | None = Field(
         default=None,
         description="Cosine similarity score from FAISS Inner Product search.",
     )
-    sparse_score: Optional[float] = Field(
+    sparse_score: float | None = Field(
         default=None,
         description="Lexical relevance score from BM25+ index.",
     )
@@ -46,11 +46,11 @@ class RetrievalRequest(BaseModel):
     """Input payload requesting hybrid retrieval."""
 
     query: str = Field(..., description="Raw user query string.")
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Preceding interactive conversation turns for contextual rewriting.",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Explicit structured metadata filters (e.g. {'document_type': 'HR_POLICY'}).",
     )
@@ -87,7 +87,7 @@ class RetrievalResponse(BaseModel):
         ...,
         description="Contextually rewritten, classified, and filtered query representation.",
     )
-    candidates: List[RetrievedCandidate] = Field(
+    candidates: list[RetrievedCandidate] = Field(
         default_factory=list,
         description="Unified candidates ordered descending by reciprocal rank fusion score.",
     )

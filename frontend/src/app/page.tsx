@@ -143,23 +143,19 @@ export default function IngestionPage() {
         {/* Page Header & Tabs */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-900 pb-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              Hallucination Mitigation Pipeline
-            </div>
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               {activeTab === "qa"
-                ? "Grounded Q&A & Verification"
+                ? "LLM Hallucination Mitigation"
                 : activeTab === "ingestion"
-                ? "Documents & Ingestion"
-                : "Cross-Session External Memory & Client Sync"}
+                ? "Document Repository"
+                : "Cross-Session Memory"}
             </h1>
-            <p className="mt-1.5 text-sm text-slate-400 max-w-2xl leading-relaxed">
+            <p className="mt-1 text-sm text-slate-400">
               {activeTab === "qa"
-                ? "Ask questions with verifiable citations, inspect evidence sufficiency gates, and observe safe abstentions."
+                ? "Side-by-side comparison of Naive LLM vs. Our Grounded Application."
                 : activeTab === "ingestion"
-                ? "Upload and manage reference documents. View document briefs, key metadata, and chunk breakdowns."
-                : "Inspect episodic vector memory, review persistent hierarchical summaries, and configure read/write permissions."}
+                ? "Upload and manage source documents, chunks, and metadata."
+                : "Inspect cross-session memory synchronization and summaries."}
             </p>
           </div>
 
@@ -173,7 +169,7 @@ export default function IngestionPage() {
               }`}
             >
               <MessageSquareQuote className="w-4 h-4" />
-              Grounded Q&A
+              Comparison
             </button>
             <button
               onClick={() => setActiveTab("ingestion")}
@@ -184,7 +180,7 @@ export default function IngestionPage() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              Ingestion & Docs
+              Documents
             </button>
             <button
               onClick={() => setActiveTab("memory")}
@@ -195,13 +191,18 @@ export default function IngestionPage() {
               }`}
             >
               <Brain className="w-4 h-4" />
-              External Memory
+              Memory
             </button>
           </div>
         </div>
 
         {activeTab === "qa" ? (
-          <GroundedQA />
+          <GroundedQA
+            documents={documents}
+            selectedDocId={selectedDocId}
+            onSelectDocId={setSelectedDocId}
+            onUploadSuccess={handleIngestSuccess}
+          />
         ) : activeTab === "memory" ? (
           <CrossSessionMemory />
         ) : (

@@ -58,12 +58,14 @@ class FaissVectorIndex:
         # Append vectors to FAISS index
         self._index.add(vectors)
 
-        for chunk, vec in zip(chunks, vectors):
+        for chunk, vec in zip(chunks, vectors, strict=True):
             chunk_id = chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
             doc_id = chunk.document_id
 
             self._id_to_chunk.append(chunk_id)
-            self._doc_to_chunks.setdefault(doc_id, []).append(chunk_id)
+            doc_chunks = self._doc_to_chunks.setdefault(doc_id, [])
+            if chunk_id not in doc_chunks:
+                doc_chunks.append(chunk_id)
             self._embeddings_cache[chunk_id] = vec
 
         self.save()
@@ -87,7 +89,7 @@ class FaissVectorIndex:
         distances, indices = self._index.search(q_vec, k)
 
         results: list[tuple[str, float]] = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for dist, idx in zip(distances[0], indices[0], strict=True):
             if idx != -1 and idx < len(self._id_to_chunk):
                 chunk_id = self._id_to_chunk[idx]
                 results.append((chunk_id, float(dist)))
@@ -144,7 +146,7 @@ class FaissVectorIndex:
         if self.index_path.is_file() and self.map_path.is_file():
             try:
                 self._index = faiss.read_index(str(self.index_path))
-                with open(self.map_path, "r", encoding="utf-8") as f:
+                with open(self.map_path, encoding="utf-8") as f:
                     map_data = json.load(f)
                     self._id_to_chunk = map_data.get("id_to_chunk", [])
                     self._doc_to_chunks = map_data.get("doc_to_chunks", {})

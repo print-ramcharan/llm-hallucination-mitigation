@@ -1,0 +1,525 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 970" width="100%" height="100%" style="background-color: #070a12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgCanvas" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070a13"/>
+      <stop offset="50%" stop-color="#0d1322"/>
+      <stop offset="100%" stop-color="#080c16"/>
+    </linearGradient>
+
+    <!-- Layer Gradients -->
+    <linearGradient id="layerGradClients" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#111c33" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0c1527" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="layerGradGateway" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#161536" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0f1126" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="layerGradEngines" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#111d2e" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0a1220" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="layerGradData" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1c1628" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#120e1d" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Component Card Gradients -->
+    <linearGradient id="cardClient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="cardModule" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="cardSubItem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.6"/>
+    </linearGradient>
+
+    <!-- Accent Header Gradients -->
+    <linearGradient id="accentCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <linearGradient id="accentPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="accentEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="accentAmber" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+    <linearGradient id="accentRose" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="shadowGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+    <filter id="subtleGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+
+    <!-- Marker Arrowheads -->
+    <marker id="arrowUp" viewBox="0 0 10 10" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 6 L 5 0 L 10 6 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowDown" viewBox="0 0 10 10" refX="5" refY="7" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 5 6 L 10 0 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowBidirectional" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <polygon points="0,5 5,2 5,8" fill="#38bdf8"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title-main { font-size: 20px; font-weight: 800; fill: #f8fafc; letter-spacing: 0.5px; }
+    .title-sub { font-size: 11px; font-weight: 500; fill: #94a3b8; }
+    .layer-tag { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+    .card-title { font-size: 12px; font-weight: 700; fill: #f1f5f9; }
+    .card-subtitle { font-size: 10px; font-weight: 500; fill: #94a3b8; }
+    .item-title { font-size: 11px; font-weight: 600; fill: #e2e8f0; }
+    .item-detail { font-size: 9.5px; font-weight: 400; fill: #94a3b8; }
+    .badge { font-size: 9px; font-weight: 700; letter-spacing: 0.4px; }
+    .bus-label { font-size: 9.5px; font-weight: 600; fill: #64748b; }
+    .spec-text { font-size: 9px; font-family: 'Consolas', 'Monaco', monospace; fill: #38bdf8; }
+    .connector-line { stroke: #334155; stroke-width: 1.5; stroke-dasharray: 4,4; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="970" fill="url(#bgCanvas)"/>
+
+  <!-- ========================================== -->
+  <!-- HEADER & SYSTEM BANNER                     -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 20)">
+    <!-- Icon Symbol -->
+    <rect x="0" y="2" width="36" height="36" rx="8" fill="url(#accentCyan)"/>
+    <text x="18" y="25" text-anchor="middle" font-size="18" fill="#ffffff" font-weight="900">🏛</text>
+    
+    <text class="title-main" x="48" y="20">HIGH-LEVEL SYSTEM ARCHITECTURE</text>
+    <text class="title-sub" x="48" y="36">Multi-Stage Evidence Retrieval, Context Optimization, Grounded Generation &amp; Cross-Session Memory</text>
+
+    <g transform="translate(860, 4)">
+      <rect width="260" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <circle cx="15" cy="15" r="4" fill="#10b981"/>
+      <text x="26" y="19" font-size="10" font-weight="600" fill="#cbd5e1">System Status: <tspan fill="#34d399">Production Ready</tspan></text>
+      <rect x="188" y="6" width="62" height="18" rx="4" fill="#0f172a"/>
+      <text x="219" y="18" text-anchor="middle" font-size="9" font-weight="700" fill="#93c5fd">v1.2.0-STABLE</text>
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LAYER 1: CLIENT & INTERFACE TIER           -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 72)">
+    <!-- Layer Outer Container -->
+    <rect width="1120" height="110" rx="12" fill="url(#layerGradClients)" stroke="#1e3a8a" stroke-width="1.2" filter="url(#shadowGlow)"/>
+    
+    <!-- Layer Tag Badge -->
+    <rect x="16" y="12" width="180" height="22" rx="4" fill="#0c1e40" stroke="#38bdf8" stroke-width="1"/>
+    <text class="layer-tag" x="106" y="27" text-anchor="middle" fill="#38bdf8">1. Presentation &amp; Clients</text>
+
+    <!-- Client 1: React + Vite Web UI -->
+    <g transform="translate(210, 14)">
+      <rect width="280" height="82" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1" filter="url(#subtleGlow)"/>
+      <rect x="12" y="10" width="26" height="26" rx="6" fill="#0284c7"/>
+      <text x="25" y="28" text-anchor="middle" font-size="14" fill="#ffffff">💻</text>
+      <text class="card-title" x="46" y="22">Interactive Web Dashboard</text>
+      <text class="card-subtitle" x="46" y="35">React 18 • TypeScript • Tailwind CSS</text>
+      <text class="item-detail" x="12" y="55">• Live Querying &amp; Context Visualizer</text>
+      <text class="item-detail" x="12" y="70">• NLI Claim Breakdown &amp; Memory Manager</text>
+      <rect x="220" y="8" width="48" height="16" rx="3" fill="#0369a1"/>
+      <text class="badge" x="244" y="20" text-anchor="middle" fill="#e0f2fe">WEB UI</text>
+    </g>
+
+    <!-- Client 2: Chromium Extension -->
+    <g transform="translate(510, 14)">
+      <rect width="295" height="82" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1" filter="url(#subtleGlow)"/>
+      <rect x="12" y="10" width="26" height="26" rx="6" fill="#7c3aed"/>
+      <text x="25" y="28" text-anchor="middle" font-size="14" fill="#ffffff">🧩</text>
+      <text class="card-title" x="46" y="22">Chromium Browser Extension</text>
+      <text class="card-subtitle" x="46" y="35">Manifest V3 • Service Worker • Content Scripts</text>
+      <text class="item-detail" x="12" y="55">• Active Web Tab Context Harvesting</text>
+      <text class="item-detail" x="12" y="70">• Bidirectional Episodic Memory Sync</text>
+      <rect x="225" y="8" width="58" height="16" rx="3" fill="#5b21b6"/>
+      <text class="badge" x="254" y="20" text-anchor="middle" fill="#ede9fe">EXT V3</text>
+    </g>
+
+    <!-- Client 3: REST & Streaming API Consumers -->
+    <g transform="translate(825, 14)">
+      <rect width="280" height="82" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1" filter="url(#subtleGlow)"/>
+      <rect x="12" y="10" width="26" height="26" rx="6" fill="#0d9488"/>
+      <text x="25" y="28" text-anchor="middle" font-size="14" fill="#ffffff">⚡</text>
+      <text class="card-title" x="46" y="22">External API &amp; SDK Consumers</text>
+      <text class="card-subtitle" x="46" y="35">Python SDK • cURL • Microservices</text>
+      <text class="item-detail" x="12" y="55">• Real-time SSE Stream Consumers</text>
+      <text class="item-detail" x="12" y="70">• Automated Batch Ingestion Pipelines</text>
+      <rect x="215" y="8" width="53" height="16" rx="3" fill="#115e59"/>
+      <text class="badge" x="241" y="20" text-anchor="middle" fill="#ccfbf1">CLIENT</text>
+    </g>
+  </g>
+
+  <!-- Communication Channel Bus 1 <-> 2 -->
+  <g transform="translate(40, 182)">
+    <line x1="350" y1="0" x2="350" y2="24" stroke="#38bdf8" stroke-width="2"/>
+    <line x1="655" y1="0" x2="655" y2="24" stroke="#a855f7" stroke-width="2"/>
+    <line x1="965" y1="0" x2="965" y2="24" stroke="#10b981" stroke-width="2"/>
+    
+    <rect x="520" y="4" width="240" height="16" rx="8" fill="#090d16" stroke="#334155" stroke-width="1"/>
+    <text class="bus-label" x="640" y="15" text-anchor="middle">HTTPS • REST (JSON) • Server-Sent Events (SSE)</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LAYER 2: API GATEWAY & ORCHESTRATION LAYER -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 206)">
+    <!-- Layer Outer Container -->
+    <rect width="1120" height="98" rx="12" fill="url(#layerGradGateway)" stroke="#4338ca" stroke-width="1.2" filter="url(#shadowGlow)"/>
+    
+    <!-- Layer Tag Badge -->
+    <rect x="16" y="12" width="180" height="22" rx="4" fill="#1c194a" stroke="#818cf8" stroke-width="1"/>
+    <text class="layer-tag" x="106" y="27" text-anchor="middle" fill="#a5b4fc">2. API Gateway &amp; Control</text>
+
+    <!-- Gateway Component 1: REST API Gateway -->
+    <g transform="translate(210, 12)">
+      <rect width="215" height="74" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <text class="card-title" x="12" y="22">FastAPI Gateway</text>
+      <text class="card-subtitle" x="12" y="36">Asynchronous Uvicorn Routing</text>
+      <text class="item-detail" x="12" y="52">• Ingestion &amp; Search Endpoints</text>
+      <text class="item-detail" x="12" y="66">• Rate Limiting &amp; Pydantic V2</text>
+    </g>
+
+    <!-- Gateway Component 2: SSE Stream Orchestrator -->
+    <g transform="translate(440, 12)">
+      <rect width="215" height="74" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <text class="card-title" x="12" y="22">Streaming Emitter</text>
+      <text class="card-subtitle" x="12" y="36">Server-Sent Events Controller</text>
+      <text class="item-detail" x="12" y="52">• Live Token Chunk Streaming</text>
+      <text class="item-detail" x="12" y="66">• Citation &amp; Guardrail Signals</text>
+    </g>
+
+    <!-- Gateway Component 3: Session & Access Controller -->
+    <g transform="translate(670, 12)">
+      <rect width="215" height="74" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <text class="card-title" x="12" y="22">Session &amp; Security</text>
+      <text class="card-subtitle" x="12" y="36">Session Lifecycle &amp; Policies</text>
+      <text class="item-detail" x="12" y="52">• Granular Read/Write Grants</text>
+      <text class="item-detail" x="12" y="66">• Session Isolation &amp; Audit Logs</text>
+    </g>
+
+    <!-- Gateway Component 4: Async Dispatcher -->
+    <g transform="translate(900, 12)">
+      <rect width="205" height="74" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <text class="card-title" x="12" y="22">Async Task Dispatcher</text>
+      <text class="card-subtitle" x="12" y="36">Background Workers</text>
+      <text class="item-detail" x="12" y="52">• Async Index Compilation</text>
+      <text class="item-detail" x="12" y="66">• Hierarchical Summarization</text>
+    </g>
+  </g>
+
+  <!-- Communication Channel Bus 2 <-> 3 -->
+  <g transform="translate(40, 304)">
+    <line x1="140" y1="0" x2="140" y2="24" stroke="#6366f1" stroke-width="2"/>
+    <line x1="365" y1="0" x2="365" y2="24" stroke="#6366f1" stroke-width="2"/>
+    <line x1="595" y1="0" x2="595" y2="24" stroke="#6366f1" stroke-width="2"/>
+    <line x1="825" y1="0" x2="825" y2="24" stroke="#6366f1" stroke-width="2"/>
+    <line x1="1025" y1="0" x2="1025" y2="24" stroke="#6366f1" stroke-width="2"/>
+
+    <rect x="470" y="4" width="260" height="16" rx="8" fill="#090d16" stroke="#334155" stroke-width="1"/>
+    <text class="bus-label" x="600" y="15" text-anchor="middle">Internal Service Bus • Dependency Injection Container</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LAYER 3: CORE INTELLIGENCE & PROCESSING ENGINES -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 328)">
+    <!-- Layer Outer Container -->
+    <rect width="1120" height="400" rx="12" fill="url(#layerGradEngines)" stroke="#0e7490" stroke-width="1.2" filter="url(#shadowGlow)"/>
+    
+    <!-- Layer Tag Badge -->
+    <rect x="16" y="14" width="220" height="24" rx="4" fill="#082f49" stroke="#38bdf8" stroke-width="1"/>
+    <text class="layer-tag" x="126" y="30" text-anchor="middle" fill="#7dd3fc">3. Core Intelligence &amp; Engines</text>
+
+    <!-- Subsystem 1: Ingestion & Indexing Engine -->
+    <g transform="translate(16, 50)">
+      <rect width="208" height="335" rx="8" fill="url(#cardModule)" stroke="#1e3a5f" stroke-width="1.2"/>
+      <rect x="0" y="0" width="208" height="32" rx="8" fill="#0f2847"/>
+      <text class="card-title" x="12" y="20">Ingestion &amp; Indexing</text>
+      <text class="spec-text" x="195" y="20" text-anchor="end">MOD-1/2</text>
+      
+      <!-- Sub-blocks -->
+      <g transform="translate(10, 42)">
+        <rect width="188" height="60" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Multimodal Parsers</text>
+        <text class="item-detail" x="10" y="34">PDF, DOCX, TXT, HTML, MD</text>
+        <text class="item-detail" x="10" y="48">Table &amp; metadata extraction</text>
+      </g>
+      <g transform="translate(10, 110)">
+        <rect width="188" height="64" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Sliding-Window Chunker</text>
+        <text class="item-detail" x="10" y="34">512 token target • 128 overlap</text>
+        <text class="item-detail" x="10" y="48">SentenceBoundary preserve</text>
+      </g>
+      <g transform="translate(10, 182)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Dense Vector Embedding</text>
+        <text class="item-detail" x="10" y="34">SentenceTransformers</text>
+        <text class="item-detail" x="10" y="48">all-MiniLM-L6-v2 (384-dim)</text>
+      </g>
+      <g transform="translate(10, 256)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Sparse BM25 Indexer</text>
+        <text class="item-detail" x="10" y="34">BM25Okapi / Inverted Index</text>
+        <text class="item-detail" x="10" y="48">Sub-linear TF-IDF weighting</text>
+      </g>
+    </g>
+
+    <!-- Subsystem 2: Hybrid Retrieval & Fusion Engine -->
+    <g transform="translate(238, 50)">
+      <rect width="208" height="335" rx="8" fill="url(#cardModule)" stroke="#4338ca" stroke-width="1.2"/>
+      <rect x="0" y="0" width="208" height="32" rx="8" fill="#1e1b4b"/>
+      <text class="card-title" x="12" y="20">Hybrid Retrieval &amp; Fusion</text>
+      <text class="spec-text" x="195" y="20" text-anchor="end">MOD-3</text>
+
+      <g transform="translate(10, 42)">
+        <rect width="188" height="60" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Intent &amp; Expansion</text>
+        <text class="item-detail" x="10" y="34">Query Intent Classification</text>
+        <text class="item-detail" x="10" y="48">Synonym &amp; acronym expander</text>
+      </g>
+      <g transform="translate(10, 110)">
+        <rect width="188" height="64" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Dense FAISS Search</text>
+        <text class="item-detail" x="10" y="34">IndexFlatIP Inner Product</text>
+        <text class="item-detail" x="10" y="48">Cosine normalized k-NN</text>
+      </g>
+      <g transform="translate(10, 182)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">BM25 Exact Lexical</text>
+        <text class="item-detail" x="10" y="34">Term frequency / IDF Match</text>
+        <text class="item-detail" x="10" y="48">Out-of-vocabulary fallback</text>
+      </g>
+      <g transform="translate(10, 256)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">RRF Rank Arbitrator</text>
+        <text class="item-detail" x="10" y="34">Score-invariant Fusion</text>
+        <text class="item-detail" x="10" y="48">RRF(d) = Σ 1 / (60 + r_i(d))</text>
+      </g>
+    </g>
+
+    <!-- Subsystem 3: Context Compaction & Optimization Engine -->
+    <g transform="translate(460, 50)">
+      <rect width="208" height="335" rx="8" fill="url(#cardModule)" stroke="#065f46" stroke-width="1.2"/>
+      <rect x="0" y="0" width="208" height="32" rx="8" fill="#064e3b"/>
+      <text class="card-title" x="12" y="20">Context Optimization</text>
+      <text class="spec-text" x="195" y="20" text-anchor="end">MOD-4</text>
+
+      <g transform="translate(10, 42)">
+        <rect width="188" height="60" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Cross-Encoder Reranker</text>
+        <text class="item-detail" x="10" y="34">Joint query-doc attention</text>
+        <text class="item-detail" x="10" y="48">ms-marco-MiniLM-L-6-v2</text>
+      </g>
+      <g transform="translate(10, 110)">
+        <rect width="188" height="64" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Salience Sentence Filter</text>
+        <text class="item-detail" x="10" y="34">Extractive sentence scoring</text>
+        <text class="item-detail" x="10" y="48">Boilerplate &amp; fluff pruning</text>
+      </g>
+      <g transform="translate(10, 182)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Semantic Deduplicator</text>
+        <text class="item-detail" x="10" y="34">Cosine similarity threshold</text>
+        <text class="item-detail" x="10" y="48">τ ≥ 0.85 redundant cull</text>
+      </g>
+      <g transform="translate(10, 256)">
+        <rect width="188" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Boundary Reorderer</text>
+        <text class="item-detail" x="10" y="34">Lost-in-the-Middle fix</text>
+        <text class="item-detail" x="10" y="48">Salience at head &amp; tail ends</text>
+      </g>
+    </g>
+
+    <!-- Subsystem 4: Gating & Grounded Generation Engine -->
+    <g transform="translate(682, 50)">
+      <rect width="216" height="335" rx="8" fill="url(#cardModule)" stroke="#92400e" stroke-width="1.2"/>
+      <rect x="0" y="0" width="216" height="32" rx="8" fill="#78350f"/>
+      <text class="card-title" x="12" y="20">Gating &amp; Generation</text>
+      <text class="spec-text" x="203" y="20" text-anchor="end">MOD-5/6</text>
+
+      <g transform="translate(10, 42)">
+        <rect width="196" height="60" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Sufficiency Gate (θ)</text>
+        <text class="item-detail" x="10" y="34">Pre-flight semantic coverage</text>
+        <text class="item-detail" x="10" y="48">Truthful Abstention Protocol</text>
+      </g>
+      <g transform="translate(10, 110)">
+        <rect width="196" height="64" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Prompt Synthesizer</text>
+        <text class="item-detail" x="10" y="34">Strict citation anchor injection</text>
+        <text class="item-detail" x="10" y="48">Hard token budget bounds</text>
+      </g>
+      <g transform="translate(10, 182)">
+        <rect width="196" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Inference Engine</text>
+        <text class="item-detail" x="10" y="34">Local Transformers / vLLM</text>
+        <text class="item-detail" x="10" y="48">Cloud APIs (OpenAI/Anthropic)</text>
+      </g>
+      <g transform="translate(10, 256)">
+        <rect width="196" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">NLI Claim Verifier</text>
+        <text class="item-detail" x="10" y="34">Entailed • Neutral • Contradicted</text>
+        <text class="item-detail" x="10" y="48">DeBERTa-v3 cross-checking</text>
+      </g>
+    </g>
+
+    <!-- Subsystem 5: External Memory & Client Sync Engine -->
+    <g transform="translate(912, 50)">
+      <rect width="192" height="335" rx="8" fill="url(#cardModule)" stroke="#831843" stroke-width="1.2"/>
+      <rect x="0" y="0" width="192" height="32" rx="8" fill="#701a75"/>
+      <text class="card-title" x="12" y="20">Memory &amp; Client Sync</text>
+      <text class="spec-text" x="180" y="20" text-anchor="end">MOD-7</text>
+
+      <g transform="translate(10, 42)">
+        <rect width="172" height="60" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Session Registry</text>
+        <text class="item-detail" x="10" y="34">Active session lifecycle</text>
+        <text class="item-detail" x="10" y="48">Multi-document tracking</text>
+      </g>
+      <g transform="translate(10, 110)">
+        <rect width="172" height="64" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Episodic Vector Store</text>
+        <text class="item-detail" x="10" y="34">Semantic past-turn search</text>
+        <text class="item-detail" x="10" y="48">Cross-session recall</text>
+      </g>
+      <g transform="translate(10, 182)">
+        <rect width="172" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Persistent Summarizer</text>
+        <text class="item-detail" x="10" y="34">Micro &amp; Macro condensation</text>
+        <text class="item-detail" x="10" y="48">Recursive tree summaries</text>
+      </g>
+      <g transform="translate(10, 256)">
+        <rect width="172" height="66" rx="6" fill="url(#cardSubItem)" stroke="#334155" stroke-width="1"/>
+        <text class="item-title" x="10" y="18">Client Synchronizer</text>
+        <text class="item-detail" x="10" y="34">Chrome extension bridge</text>
+        <text class="item-detail" x="10" y="48">Granular Read/Write ACLs</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Communication Channel Bus 3 <-> 4 -->
+  <g transform="translate(40, 728)">
+    <line x1="120" y1="0" x2="120" y2="24" stroke="#e11d48" stroke-width="2"/>
+    <line x1="340" y1="0" x2="340" y2="24" stroke="#e11d48" stroke-width="2"/>
+    <line x1="560" y1="0" x2="560" y2="24" stroke="#e11d48" stroke-width="2"/>
+    <line x1="790" y1="0" x2="790" y2="24" stroke="#e11d48" stroke-width="2"/>
+    <line x1="1010" y1="0" x2="1010" y2="24" stroke="#e11d48" stroke-width="2"/>
+
+    <rect x="490" y="4" width="220" height="16" rx="8" fill="#090d16" stroke="#334155" stroke-width="1"/>
+    <text class="bus-label" x="600" y="15" text-anchor="middle">Data Access Objects (DAO) • FAISS Vector I/O • SQLite ACID</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LAYER 4: DATA & PERSISTENCE TIER           -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 752)">
+    <!-- Layer Outer Container -->
+    <rect width="1120" height="142" rx="12" fill="url(#layerGradData)" stroke="#be123c" stroke-width="1.2" filter="url(#shadowGlow)"/>
+    
+    <!-- Layer Tag Badge -->
+    <rect x="16" y="14" width="180" height="22" rx="4" fill="#3f0e1d" stroke="#f43f5e" stroke-width="1"/>
+    <text class="layer-tag" x="106" y="29" text-anchor="middle" fill="#fda4af">4. Data &amp; Persistence</text>
+
+    <!-- Data Store 1: Dense Vector Stores -->
+    <g transform="translate(210, 14)">
+      <rect width="215" height="114" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <rect x="10" y="10" width="24" height="24" rx="4" fill="#0369a1"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12" fill="#ffffff">🗄️</text>
+      <text class="card-title" x="40" y="22">FAISS Vector Store</text>
+      <text class="card-subtitle" x="40" y="34">Dense Similarity Indexes</text>
+      <text class="item-detail" x="10" y="58">• Corpus Index: index_corpus.faiss</text>
+      <text class="item-detail" x="10" y="74">• Episodic Memory: memory.faiss</text>
+      <text class="item-detail" x="10" y="90">• L2 &amp; Inner Product (Cosine)</text>
+      <text class="spec-text" x="10" y="105">DIM: 384 • IndexFlatIP</text>
+    </g>
+
+    <!-- Data Store 2: Sparse Lexical Stores -->
+    <g transform="translate(440, 14)">
+      <rect width="215" height="114" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <rect x="10" y="10" width="24" height="24" rx="4" fill="#4338ca"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12" fill="#ffffff">📚</text>
+      <text class="card-title" x="40" y="22">BM25 Inverted Store</text>
+      <text class="card-subtitle" x="40" y="34">Sparse Lexical Tokens</text>
+      <text class="item-detail" x="10" y="58">• Inverted Term Index: bm25.pkl</text>
+      <text class="item-detail" x="10" y="74">• Corpus Vocabulary &amp; Document Freqs</text>
+      <text class="item-detail" x="10" y="90">• Exact Keyword Matching Engine</text>
+      <text class="spec-text" x="10" y="105">BM25Okapi • k1=1.5, b=0.75</text>
+    </g>
+
+    <!-- Data Store 3: Relational / SQLite State Store -->
+    <g transform="translate(670, 14)">
+      <rect width="215" height="114" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <rect x="10" y="10" width="24" height="24" rx="4" fill="#047857"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12" fill="#ffffff">🗃️</text>
+      <text class="card-title" x="40" y="22">SQLite ACID Store</text>
+      <text class="card-subtitle" x="40" y="34">Relational State Database</text>
+      <text class="item-detail" x="10" y="58">• Sessions &amp; Conversation Turns</text>
+      <text class="item-detail" x="10" y="74">• Hierarchical Summaries Table</text>
+      <text class="item-detail" x="10" y="90">• Audit Trails &amp; Granular ACLs</text>
+      <text class="spec-text" x="10" y="105">WAL Mode • ACID Compliant</text>
+    </g>
+
+    <!-- Data Store 4: Document & Provenance Repository -->
+    <g transform="translate(900, 14)">
+      <rect width="205" height="114" rx="8" fill="url(#cardClient)" stroke="#334155" stroke-width="1"/>
+      <rect x="10" y="10" width="24" height="24" rx="4" fill="#b91c1c"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12" fill="#ffffff">📁</text>
+      <text class="card-title" x="40" y="22">Document Repository</text>
+      <text class="card-subtitle" x="40" y="34">Raw &amp; Structured Files</text>
+      <text class="item-detail" x="10" y="58">• Structured Chunks JSON</text>
+      <text class="item-detail" x="10" y="74">• Source Document Provenance</text>
+      <text class="item-detail" x="10" y="90">• Citation Anchor Offsets</text>
+      <text class="spec-text" x="10" y="105">File System / POSIX Storage</text>
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- FOOTER & LEGEND                            -->
+  <!-- ========================================== -->
+  <g transform="translate(40, 915)">
+    <rect width="1120" height="38" rx="8" fill="#0b1120" stroke="#1e293b" stroke-width="1"/>
+    
+    <g transform="translate(20, 14)">
+      <rect width="12" height="12" rx="3" fill="#38bdf8"/>
+      <text x="18" y="10" font-size="10" font-weight="600" fill="#94a3b8">Presentation Tier</text>
+
+      <rect x="150" y="0" width="12" height="12" rx="3" fill="#818cf8"/>
+      <text x="168" y="10" font-size="10" font-weight="600" fill="#94a3b8">API Gateway &amp; Control</text>
+
+      <rect x="330" y="0" width="12" height="12" rx="3" fill="#06b6d4"/>
+      <text x="348" y="10" font-size="10" font-weight="600" fill="#94a3b8">Ingestion &amp; Indexing</text>
+
+      <rect x="500" y="0" width="12" height="12" rx="3" fill="#6366f1"/>
+      <text x="518" y="10" font-size="10" font-weight="600" fill="#94a3b8">Hybrid Retrieval</text>
+
+      <rect x="640" y="0" width="12" height="12" rx="3" fill="#10b981"/>
+      <text x="658" y="10" font-size="10" font-weight="600" fill="#94a3b8">Context Optimization</text>
+
+      <rect x="800" y="0" width="12" height="12" rx="3" fill="#f59e0b"/>
+      <text x="818" y="10" font-size="10" font-weight="600" fill="#94a3b8">Gating &amp; Generation</text>
+
+      <rect x="955" y="0" width="12" height="12" rx="3" fill="#f43f5e"/>
+      <text x="973" y="10" font-size="10" font-weight="600" fill="#94a3b8">Data &amp; Persistence</text>
+    </g>
+  </g>
+</svg>

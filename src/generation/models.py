@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -30,19 +30,19 @@ class ClaimVerification(BaseModel):
         le=1.0,
         description="Confidence score of the NLI verification classification.",
     )
-    cited_sources: List[str] = Field(
+    cited_sources: list[str] = Field(
         default_factory=list,
         description="Citation tags explicitly attached to this claim (e.g. ['[Doc 1, Chunk 0]']).",
     )
-    entailing_chunk_id: Optional[str] = Field(
+    entailing_chunk_id: str | None = Field(
         default=None,
         description="Chunk identifier that empirically entails or supports the claim.",
     )
-    evidence_snippet: Optional[str] = Field(
+    evidence_snippet: str | None = Field(
         default=None,
         description="Exact supporting or contradictory excerpt from the context passage.",
     )
-    reasoning: Optional[str] = Field(
+    reasoning: str | None = Field(
         default=None,
         description="Diagnostic explanation of the entailment/neutral/contradiction determination.",
     )
@@ -69,7 +69,7 @@ class SufficiencyAssessment(BaseModel):
         ...,
         description="Extracted focal topic or target entity of the query.",
     )
-    abstention_message: Optional[str] = Field(
+    abstention_message: str | None = Field(
         default=None,
         description="Formulated truthful abstention response if evidence is insufficient.",
     )
@@ -77,11 +77,11 @@ class SufficiencyAssessment(BaseModel):
         ...,
         description="Explanation of sufficiency evaluation findings.",
     )
-    matched_aspects: List[str] = Field(
+    matched_aspects: list[str] = Field(
         default_factory=list,
         description="Key query aspects and entities directly covered in the evidence passages.",
     )
-    missing_aspects: List[str] = Field(
+    missing_aspects: list[str] = Field(
         default_factory=list,
         description="Query information requirements absent from the retrieved evidence passages.",
     )
@@ -107,15 +107,15 @@ class GroundingReport(BaseModel):
         default=0,
         description="Number of claims directly refuted by evidence facts.",
     )
-    claims: List[ClaimVerification] = Field(
+    claims: list[ClaimVerification] = Field(
         default_factory=list,
         description="Detailed verification for each atomic claim in the generated answer.",
     )
-    verified_citations: List[str] = Field(
+    verified_citations: list[str] = Field(
         default_factory=list,
         description="Citation tags in the generated answer that match valid context passages.",
     )
-    unverified_citations: List[str] = Field(
+    unverified_citations: list[str] = Field(
         default_factory=list,
         description="Citation tags found in text that do not correspond to any provided evidence chunk.",
     )
@@ -125,15 +125,15 @@ class GenerationRequest(BaseModel):
     """Payload for submitting queries and evidence context to the grounded generator."""
 
     query: str = Field(..., description="User query or prompt to be answered.")
-    context: Optional[OptimizedContext] = Field(
+    context: OptimizedContext | None = Field(
         default=None,
         description="Compacted and reordered evidence context from Module 5.",
     )
-    raw_evidence_chunks: Optional[List[CompactedEvidence]] = Field(
+    raw_evidence_chunks: list[CompactedEvidence] | None = Field(
         default=None,
         description="Alternative direct list of evidence chunks if OptimizedContext is not pre-packaged.",
     )
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Interactive conversational turns for contextual awareness.",
     )
@@ -161,7 +161,7 @@ class GenerationRequest(BaseModel):
         le=4096,
         description="Maximum generation token allowance.",
     )
-    provider: Optional[str] = Field(
+    provider: str | None = Field(
         default=None,
         description="Optional LLM provider override ('offline', 'openai', 'gemini', 'ollama').",
     )
@@ -176,7 +176,7 @@ class GenerationResponse(BaseModel):
         ...,
         description="True if generator triggered the Abstention Protocol due to insufficient evidence.",
     )
-    abstention_reason: Optional[str] = Field(
+    abstention_reason: str | None = Field(
         default=None,
         description="Rationale for abstaining if abstention was triggered.",
     )
@@ -188,7 +188,7 @@ class GenerationResponse(BaseModel):
         ...,
         description="Telemetry from the post-generation Anti-Hallucination NLI Verifier.",
     )
-    citations: List[str] = Field(
+    citations: list[str] = Field(
         default_factory=list,
         description="All citation tags incorporated into the answer.",
     )
@@ -206,4 +206,35 @@ class StreamEvent(BaseModel):
     """Server-Sent Event (SSE) message payload for real-time token streaming."""
 
     event: str = Field(..., description="Event type: 'sufficiency', 'token', 'grounding', 'done', 'error'")
-    data: Dict[str, Any] = Field(..., description="Structured payload associated with the event.")
+    data: dict[str, Any] = Field(..., description="Structured payload associated with the event.")
+
+
+class NaiveGenerationResponse(BaseModel):
+    """Response produced by a naive/baseline LLM without hybrid retrieval or evidence gating."""
+
+    query: str = Field(..., description="User query evaluated.")
+    answer: str = Field(..., description="Direct naive LLM output without evidence citations.")
+    has_citations: bool = Field(default=False, description="Whether citations are present.")
+    citations: list[str] = Field(default_factory=list, description="List of citations (empty for naive).")
+    faithfulness_score: float | None = Field(
+        default=None,
+        description="Faithfulness score (unverified for naive).",
+    )
+    hallucination_risk: str = Field(
+        default="High (Unverified / No Evidence Anchors)",
+        description="Assessed hallucination risk level.",
+    )
+    latency_ms: float = Field(..., description="Generation latency in milliseconds.")
+    model_name: str = Field(..., description="Model identifier used for naive inference.")
+
+
+class ComparisonResponse(BaseModel):
+    """Side-by-side comparison payload evaluating Naive LLM vs Our Grounded Mitigation Pipeline."""
+
+    query: str = Field(..., description="The query processed by both pipelines.")
+    naive: NaiveGenerationResponse = Field(..., description="Baseline Naive LLM output.")
+    grounded: GenerationResponse = Field(..., description="Our Grounded Mitigation Pipeline output.")
+    metrics_comparison: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Summary comparison metrics (citations, hallucination risk, sufficiency, NLI).",
+    )

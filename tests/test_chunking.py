@@ -98,7 +98,7 @@ class TestSemanticChunker:
         assert len(chunks) >= 2, "Expected multiple chunks for this text length at target_tokens=60"
 
         # Check metadata on every chunk
-        for idx, chunk in enumerate(chunks):
+        for chunk in chunks:
             assert chunk.metadata["source"] == "employee_handbook.pdf"
             assert chunk.metadata["page"] == 12
             assert chunk.metadata["section"] == "Leave Policy"

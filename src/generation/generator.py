@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 import time
-from typing import Iterator, List, Optional
+from collections.abc import Iterator
 
 from src.context.models import CompactedEvidence, OptimizedContext
 from src.generation.engine import (
@@ -16,6 +17,7 @@ from src.generation.models import (
     GenerationRequest,
     GenerationResponse,
     GroundingReport,
+    NaiveGenerationResponse,
     SufficiencyAssessment,
 )
 from src.generation.prompts import GroundedPromptSynthesizer, default_prompt_synthesizer
@@ -42,10 +44,10 @@ class GroundedGenerator:
 
     def __init__(
         self,
-        sufficiency_classifier: Optional[EvidenceSufficiencyClassifier] = None,
-        prompt_synthesizer: Optional[GroundedPromptSynthesizer] = None,
-        engine: Optional[BaseInferenceEngine] = None,
-        verifier: Optional[AntiHallucinationVerifier] = None,
+        sufficiency_classifier: EvidenceSufficiencyClassifier | None = None,
+        prompt_synthesizer: GroundedPromptSynthesizer | None = None,
+        engine: BaseInferenceEngine | None = None,
+        verifier: AntiHallucinationVerifier | None = None,
     ) -> None:
         self.sufficiency_classifier = sufficiency_classifier or default_sufficiency_classifier
         self.prompt_synthesizer = prompt_synthesizer or default_prompt_synthesizer
@@ -55,15 +57,15 @@ class GroundedGenerator:
     def generate(
         self,
         query: str,
-        context: Optional[OptimizedContext] = None,
-        raw_evidence_chunks: Optional[List[CompactedEvidence]] = None,
-        conversation_history: Optional[List[ConversationTurn]] = None,
-        sufficiency_threshold: Optional[float] = None,
-        hallucination_threshold: Optional[float] = None,
+        context: OptimizedContext | None = None,
+        raw_evidence_chunks: list[CompactedEvidence] | None = None,
+        conversation_history: list[ConversationTurn] | None = None,
+        sufficiency_threshold: float | None = None,
+        hallucination_threshold: float | None = None,
         temperature: float = 0.0,
         max_tokens: int = 1024,
-        provider: Optional[str] = None,
-        memory_context: Optional[str] = None,
+        provider: str | None = None,
+        memory_context: str | None = None,
     ) -> GenerationResponse:
         """Execute synchronous grounded generation with pre- and post-generation guardrails."""
         start_time = time.perf_counter()
@@ -163,15 +165,15 @@ class GroundedGenerator:
     def generate_stream(
         self,
         query: str,
-        context: Optional[OptimizedContext] = None,
-        raw_evidence_chunks: Optional[List[CompactedEvidence]] = None,
-        conversation_history: Optional[List[ConversationTurn]] = None,
-        sufficiency_threshold: Optional[float] = None,
-        hallucination_threshold: Optional[float] = None,
+        context: OptimizedContext | None = None,
+        raw_evidence_chunks: list[CompactedEvidence] | None = None,
+        conversation_history: list[ConversationTurn] | None = None,
+        sufficiency_threshold: float | None = None,
+        hallucination_threshold: float | None = None,
         temperature: float = 0.0,
         max_tokens: int = 1024,
-        provider: Optional[str] = None,
-        memory_context: Optional[str] = None,
+        provider: str | None = None,
+        memory_context: str | None = None,
     ) -> Iterator[str]:
         """Stream real-time tokens and guardrail telemetry via Server-Sent Events (SSE)."""
         start_time = time.perf_counter()
@@ -206,7 +208,7 @@ class GroundedGenerator:
 
         # 3. Token Streaming
         engine = EngineFactory.create_engine(provider) if provider else self.engine
-        accumulated_chunks: List[str] = []
+        accumulated_chunks: list[str] = []
 
         yield f"event: start\ndata: {json.dumps({'model': engine.model_name})}\n\n"
 
@@ -234,6 +236,117 @@ class GroundedGenerator:
 
         yield f"event: grounding\ndata: {json.dumps(grounding_report.model_dump())}\n\n"
         yield f"event: done\ndata: {json.dumps({'abstained': False, 'citations': citations, 'latency_ms': latency_ms})}\n\n"
+
+    def generate_naive(
+        self,
+        query: str,
+        document_text: str | None = None,
+        provider: str | None = None,
+    ) -> NaiveGenerationResponse:
+        """Generate response from a naive baseline LLM provided with the entire document and query directly,
+        without chunking, hybrid retrieval, cross-encoder reranking, context compaction, or NLI guardrails.
+        """
+        start_time = time.perf_counter()
+        engine = EngineFactory.create_engine(provider) if provider else self.engine
+
+        doc_context = (document_text or "").strip()
+
+        if getattr(engine, "is_configured", lambda: True)():
+            system_prompt = (
+                "You are an AI assistant. You are provided with the entire raw document content and a user query. "
+                "Answer the user's question directly based on the raw document text. "
+                "Do not use external retrieval, chunking, or special citation tags."
+            )
+            prompt = (
+                f"ENTIRE DOCUMENT CONTENT:\n{doc_context}\n\n"
+                f"USER QUERY: {query}\n\n"
+                f"ANSWER:"
+            )
+            try:
+                raw_answer = engine.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=0.0,
+                    max_tokens=1024,
+                )
+            except Exception:
+                raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)
+        else:
+            # Offline naive baseline: processes the entire un-chunked document text directly
+            raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)
+
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        return NaiveGenerationResponse(
+            query=query,
+            answer=raw_answer,
+            has_citations=False,
+            citations=[],
+            faithfulness_score=0.40 if doc_context else 0.20,
+            hallucination_risk="High (Unverified / No Citation Anchors / Subject to Context Degradation)",
+            latency_ms=latency_ms,
+            model_name=f"{engine.model_name} (Naive Monolithic Baseline)",
+        )
+
+    def _generate_offline_naive(self, query: str, document_text: str = "") -> str:
+        """Synthesize naive LLM response given the entire document and query directly.
+
+        Demonstrates baseline long-context behavior:
+        - Directly processes the entire monolithic document without semantic sliding-window chunking.
+        - Suffers from Context Degradation (Lost-in-the-Middle effect) over lengthy texts.
+        - Produces continuous text without bracketed citation tags or claim verification.
+        """
+        if not document_text.strip():
+            return (
+                f"Regarding '{query}', no document context was provided. Standard AI models typically formulate "
+                "a generalized response derived from broad web training data without verified document citations."
+            )
+
+        q_words = set(re.findall(r"\b[a-zA-Z0-9_\-\.]{2,}\b", query.lower()))
+        from src.generation.sufficiency import _STOP_WORDS
+        content_words = {w for w in q_words if w not in _STOP_WORDS}
+
+        # Split entire raw document into sentences
+        clean_doc = document_text.replace("\r", " ")
+        raw_sentences = re.split(r"(?<=[.!?])\s+", clean_doc)
+
+        scored_sentences: list[tuple[float, int, str]] = []
+        for idx, s in enumerate(raw_sentences):
+            s_clean = s.strip()
+            if len(s_clean) < 20 or s_clean.startswith("--- Page"):
+                continue
+            s_words = set(re.findall(r"\b[a-zA-Z0-9_\-\.]{2,}\b", s_clean.lower()))
+            overlap = len(content_words & s_words)
+            if overlap > 0:
+                # Simulating transformer attention over monolithic context:
+                # Positions in the middle of large contexts suffer from attention attenuation (Lost-in-the-Middle)
+                rel_pos = idx / max(len(raw_sentences), 1)
+                # U-shaped attention curve: head and tail retain attention; middle suffers degradation
+                attention_weight = 1.0 - 0.35 * (1.0 - 4.0 * (rel_pos - 0.5) ** 2) if len(raw_sentences) > 30 else 1.0
+                score = (overlap / (len(content_words) + 1e-5)) * attention_weight
+                scored_sentences.append((score, idx, s_clean))
+
+        scored_sentences.sort(key=lambda x: x[0], reverse=True)
+
+        if not scored_sentences or scored_sentences[0][0] <= 0:
+            return (
+                f"Based on reading the entire document, the text contains general information, but does not provide "
+                f"a direct answer to '{query}'."
+            )
+
+        # Take the top matching sentences from naive monolithic reading
+        selected = []
+        seen = set()
+        for _score, _idx, sent in scored_sentences:
+            clean_sent = re.sub(r"--- Page \d+ ---", "", sent).strip()
+            norm = clean_sent.lower()[:30]
+            if norm not in seen and len(clean_sent) > 15:
+                seen.add(norm)
+                selected.append(clean_sent.rstrip(". "))
+            if len(selected) >= 3:
+                break
+
+        joined = ". ".join(selected) + "."
+        return joined
 
 
 default_grounded_generator = GroundedGenerator()

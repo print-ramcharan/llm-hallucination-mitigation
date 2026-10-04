@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
@@ -20,11 +20,11 @@ class FullContextPipelineRequest(BaseModel):
     """Payload executing the full chain: Hybrid Retrieval -> Reranking -> Context Compaction."""
 
     query: str = Field(..., description="User search query string.")
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Optional interactive chat history turns.",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Optional structured metadata filters.",
     )
@@ -119,7 +119,7 @@ def run_full_context_pipeline(payload: FullContextPipelineRequest) -> OptimizedC
     status_code=status.HTTP_200_OK,
     summary="Get status and configurations of the context optimization engine",
 )
-def get_context_status() -> Dict[str, Any]:
+def get_context_status() -> dict[str, Any]:
     """Retrieve default token allowances, salience cutoffs, and component statuses."""
     return {
         "status": "ready",

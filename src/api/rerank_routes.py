@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
@@ -19,11 +19,11 @@ class HybridAndRerankRequest(BaseModel):
     """Payload for executing end-to-end hybrid retrieval followed by cross-encoder reranking."""
 
     query: str = Field(..., description="User search query string.")
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Optional interactive conversation history for coreference and ellipsis resolution.",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Optional structured metadata filters.",
     )
@@ -87,7 +87,7 @@ def hybrid_retrieve_and_rerank(payload: HybridAndRerankRequest) -> RankedContext
     status_code=status.HTTP_200_OK,
     summary="Get cross-encoder model status and pruning parameters",
 )
-def get_reranker_status() -> Dict[str, Any]:
+def get_reranker_status() -> dict[str, Any]:
     """Retrieve status, model identifier, and default threshold configurations."""
     return {
         "status": "ready",
