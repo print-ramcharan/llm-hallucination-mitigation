@@ -1,4 +1,4 @@
-# Mitigating Hallucination and Context Degradation in LLMs
+# Mitigating Context Degradation in LLMs Using External Memory and Hybrid Retrieval
 
 <div align="center">
 
@@ -43,7 +43,7 @@ This repository implements a **multi-stage evidence retrieval, context optimizat
 ## 🏛️ System Architecture
 
 <p align="center">
-  <img src="docs/assets/system_architecture.png" alt="High-Level System Architecture Diagram" width="100%" />
+  <img src="docs/assets/system_architecture.svg" alt="High-Level System Architecture Diagram" width="100%" />
 </p>
 
 The system architecture is structured into decoupled, high-performance layers centered around the **External Memory System (Orchestrator)**:
@@ -298,6 +298,10 @@ npm run dev
 
 ---
 
+## 📊 Research Evaluation
+
+The **Evaluate** tab runs annotated query sets against the live application indexes and pipeline, compares BM25, dense FAISS, RRF, cross-encoder reranking, conventional dense RAG, and the full pipeline, and displays per-query answers plus aggregate metrics. Export per-query CSV and IEEE-ready LaTeX from the UI. The CLI runner is also available for repeatable offline experiments. The JSONL annotation format, API endpoint, and run instructions are documented in [`docs/evaluation.md`](docs/evaluation.md). Retrieval scores require chunk-level relevance judgments; QA scores require gold answers.
+
 ## 🧪 Testing & Verification
 
 The project includes **14 comprehensive test suites** covering all modular subsystems:
@@ -381,3 +385,4 @@ Mitigating-Context-Degradation/
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+

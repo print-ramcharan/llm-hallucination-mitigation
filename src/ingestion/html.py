@@ -58,7 +58,9 @@ class HtmlParser(BaseParser):
             extra_metadata["description"] = meta_desc["content"].strip()
 
         # Remove clutter, scripts, styles, navigation, footer
-        for tag in soup(["script", "style", "noscript", "nav", "footer", "header", "aside", "svg"]):
+        for tag in soup(
+            ["script", "style", "noscript", "nav", "footer", "header", "aside", "svg"]
+        ):
             tag.decompose()
 
         elements: list[DocumentElement] = []
@@ -70,7 +72,19 @@ class HtmlParser(BaseParser):
         root = soup.body if soup.body else soup
 
         # Extract structured content tags in document order
-        content_tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "table", "pre", "blockquote"]
+        content_tags = [
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "p",
+            "li",
+            "table",
+            "pre",
+            "blockquote",
+        ]
         for element in root.find_all(content_tags):
             tag_name = element.name.lower()
             text = element.get_text(separator=" ", strip=True)

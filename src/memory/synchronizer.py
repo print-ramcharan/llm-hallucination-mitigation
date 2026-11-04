@@ -87,6 +87,7 @@ class CrossSessionMemorySynchronizer:
         summaries, _ = self.store.search_summaries(
             query=query,
             session_id=session_id,
+            user_id=user_id,
             top_k=1,
             min_similarity=0.25,
         )
@@ -130,10 +131,10 @@ class CrossSessionMemorySynchronizer:
                 # Prioritize verified facts if available
                 if m.verified_facts:
                     facts_str = "; ".join(m.verified_facts[:2])
-                    blocks.append(f"- Past Q: \"{m.query}\" -> Established: {facts_str}")
+                    blocks.append(f'- Past Q: "{m.query}" -> Established: {facts_str}')
                 else:
                     ans_excerpt = m.answer.strip().split(".")[0]
-                    blocks.append(f"- Past Q: \"{m.query}\" -> {ans_excerpt}.")
+                    blocks.append(f'- Past Q: "{m.query}" -> {ans_excerpt}.')
 
         raw_text = "\n".join(blocks)
         # Token estimation: roughly 1.3 tokens per whitespace-delimited word
@@ -184,7 +185,11 @@ class CrossSessionMemorySynchronizer:
                     verified_facts.append(claim.claim_text.strip())
 
         # If no grounding report provided, extract first factual sentence as baseline fact
-        if not verified_facts and answer and not answer.startswith("The available documents do not contain"):
+        if (
+            not verified_facts
+            and answer
+            and not answer.startswith("The available documents do not contain")
+        ):
             first_sentence = answer.strip().split(".")[0].strip()
             if len(first_sentence) > 10:
                 verified_facts.append(first_sentence)
@@ -214,9 +219,14 @@ class CrossSessionMemorySynchronizer:
         # Trigger automatic hierarchical summarization if turn count is a multiple of turns_per_summary
         updated_session = self.registry.get_session(session_id)
         if updated_session and perms.auto_summarize and updated_session.turn_count >= 3:
-            if updated_session.turn_count % self.summarizer.turns_per_summary == 0 or updated_session.turn_count == 3:
+            if (
+                updated_session.turn_count % self.summarizer.turns_per_summary == 0
+                or updated_session.turn_count == 3
+            ):
                 all_memories = self.store.list_session_memories(session_id)
-                summary = self.summarizer.summarize_session(updated_session, all_memories)
+                summary = self.summarizer.summarize_session(
+                    updated_session, all_memories
+                )
                 self.store.save_summary(summary)
 
         return saved_item
@@ -225,11 +235,15 @@ class CrossSessionMemorySynchronizer:
     # Browser Extension & Web Client Context Capture
     # =========================================================================
 
-    def capture_web_context(self, request: WebContextCaptureRequest) -> EpisodicMemoryItem:
+    def capture_web_context(
+        self, request: WebContextCaptureRequest
+    ) -> EpisodicMemoryItem:
         """Capture highlighted text and page metadata sent from Browser Extension or Web Client."""
         session_id = request.session_id
         if not session_id:
-            session = self.registry.get_or_create_default_session(user_id=request.user_id)
+            session = self.registry.get_or_create_default_session(
+                user_id=request.user_id
+            )
             session_id = session.session_id
 
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()

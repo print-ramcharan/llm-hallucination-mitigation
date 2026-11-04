@@ -46,7 +46,9 @@ class RRFEngine:
         # Map: chunk_id -> dict with ranks, raw scores, and accumulated RRF score
         candidates_map: dict[str, dict[str, Any]] = {}
 
-        def _record_candidate(chunk_id: str, rank: int, score: float, prefix: str) -> None:
+        def _record_candidate(
+            chunk_id: str, rank: int, score: float, prefix: str
+        ) -> None:
             if chunk_id not in candidates_map:
                 candidates_map[chunk_id] = {
                     "dense_rank": None,

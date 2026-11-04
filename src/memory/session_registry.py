@@ -174,7 +174,9 @@ class SessionRegistry:
         md_lines.append("## Chronological Episodic Interaction Turns")
         if turns:
             for t in turns:
-                md_lines.append(f"### Turn {t.turn_index + 1}: {t.query} [{t.timestamp}]")
+                md_lines.append(
+                    f"### Turn {t.turn_index + 1}: {t.query} [{t.timestamp}]"
+                )
                 if t.intent:
                     md_lines.append(f"- **Intent:** `{t.intent}`")
                 md_lines.append(f"- **Answer:** {t.answer}")

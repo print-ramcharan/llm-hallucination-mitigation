@@ -1,9 +1,138 @@
 import { Document, DocumentMetadata, HealthStatus, IngestApiResponse } from "@/types/ingestion";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const AUTH_TOKEN_KEY = "mitigating-context-access-token";
+const AUTH_USER_KEY = "mitigating-context-user";
+
+export interface AuthProfile { user_id: string; username: string; access_token: string; token_type: string }
+
+export function getSavedAuth(): AuthProfile | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(AUTH_USER_KEY);
+  try { return raw ? JSON.parse(raw) as AuthProfile : null; } catch { return null; }
+}
+
+export function saveAuth(profile: AuthProfile | null): void {
+  if (typeof window === "undefined") return;
+  if (profile) {
+    localStorage.setItem(AUTH_TOKEN_KEY, profile.access_token);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(profile));
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+  }
+}
+
+async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(input, { ...init, headers });
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-expired"));
+  }
+  return response;
+}
+
+async function authRequest(path: "register" | "login", username: string, password: string): Promise<AuthProfile> {
+  const res = await fetch(`${API_BASE_URL}/api/auth/${path}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const body = await res.json().catch(() => ({ detail: res.statusText }));
+  if (!res.ok) throw new Error(body.detail || "Authentication failed");
+  return body as AuthProfile;
+}
+
+export const registerUser = (username: string, password: string) => authRequest("register", username, password);
+export const loginUser = (username: string, password: string) => authRequest("login", username, password);
+
+export interface EvaluationCase {
+  id?: string;
+  query: string;
+  relevant_chunk_ids: string[];
+  gold_answer?: string;
+  gold_citation_ids?: string[];
+  document_id?: string;
+}
+
+export interface EvaluationSummary {
+  method: string;
+  queries: number;
+  recall_at_10: number | null;
+  mrr_at_10: number | null;
+  ndcg_at_10: number | null;
+  qa_em: number | null;
+  qa_f1: number | null;
+  citation_precision: number | null;
+  citation_recall: number | null;
+  median_end_to_end_latency_ms: number | null;
+  p95_end_to_end_latency_ms: number | null;
+  mean_input_tokens: number | null;
+  [key: string]: string | number | null;
+}
+
+export interface EvaluationQueryResult {
+  query_id: string;
+  query: string;
+  method: string;
+  retrieved_chunk_ids: string[];
+  recall_at_10: number | null;
+  mrr_at_10: number | null;
+  ndcg_at_10: number | null;
+  qa_em: number | null;
+  qa_f1: number | null;
+  citation_precision: number | null;
+  citation_recall: number | null;
+  answer: string | null;
+  latency_ms: number | null;
+  input_tokens: number | null;
+  answer_abstained: boolean | null;
+  [key: string]: string | number | boolean | string[] | null;
+}
+
+export interface EvaluationPairedComparison {
+  metric: string;
+  comparison: string;
+  n_paired_queries: number;
+  mean_difference: number;
+  std_difference: number;
+  bootstrap_95ci_low: number;
+  bootstrap_95ci_high: number;
+  permutation_p_two_sided: number;
+  [key: string]: string | number;
+}
+
+export interface EvaluationResponse {
+  summaries: EvaluationSummary[];
+  per_query: EvaluationQueryResult[];
+  paired_comparisons: EvaluationPairedComparison[];
+  resources: { index_size_mb: number; process_rss_mb: number | null; process_peak_rss_mb: number | null; peak_gpu_memory_mb: number | null };
+  notes: Record<string, string>;
+}
+
+export async function runApplicationEvaluation(payload: {
+  cases: EvaluationCase[];
+  provider?: string;
+  generate_answers: boolean;
+  context_budgets: number[];
+}): Promise<EvaluationResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/api/evaluation/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(body.detail || "Evaluation run failed");
+  }
+  return response.json();
+}
 
 export async function checkHealth(): Promise<HealthStatus> {
-  const res = await fetch(`${API_BASE_URL}/api/health`, { cache: "no-store" });
+  const res = await apiFetch(`${API_BASE_URL}/api/health`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`API health check failed with status ${res.status}`);
   }
@@ -14,7 +143,7 @@ export async function uploadDocumentFile(file: File): Promise<IngestApiResponse>
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE_URL}/api/ingest/upload`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/ingest/upload`, {
     method: "POST",
     body: formData,
   });
@@ -32,7 +161,7 @@ export async function ingestRawText(
   content: string,
   format: "txt" | "md" | "html"
 ): Promise<IngestApiResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/text`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/ingest/text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content, format }),
@@ -47,7 +176,7 @@ export async function ingestRawText(
 }
 
 export async function fetchDocuments(): Promise<DocumentMetadata[]> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/documents`, { cache: "no-store" });
+  const res = await apiFetch(`${API_BASE_URL}/api/ingest/documents`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to fetch documents list");
   }
@@ -55,7 +184,7 @@ export async function fetchDocuments(): Promise<DocumentMetadata[]> {
 }
 
 export async function fetchDocumentById(docId: string): Promise<Document> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/documents/${docId}`, { cache: "no-store" });
+  const res = await apiFetch(`${API_BASE_URL}/api/ingest/documents/${docId}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to fetch document ${docId}`);
   }
@@ -63,7 +192,7 @@ export async function fetchDocumentById(docId: string): Promise<Document> {
 }
 
 export async function deleteDocumentById(docId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/ingest/documents/${docId}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/ingest/documents/${docId}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -133,7 +262,7 @@ export interface ComparisonResponse {
   query: string;
   naive: NaiveGenerationResponse;
   grounded: GroundedAnswerResponse;
-  metrics_comparison: Record<string, any>;
+  metrics_comparison: Record<string, string | number | null>;
 }
 
 export async function submitQuestionComparison(
@@ -161,7 +290,7 @@ export async function submitQuestionComparison(
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/generate/compare`, {
+    res = await apiFetch(`${API_BASE_URL}/api/generate/compare`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -184,17 +313,17 @@ export async function submitQuestionComparison(
 export interface StreamCompareCallbacks {
   onStage?: (stage: string, message: string) => void;
   onProvider?: (model: string, provider: string) => void;
-  onSufficiency?: (sufficiency: any) => void;
+  onSufficiency?: (sufficiency: SufficiencyAssessment) => void;
   onAbstention?: (abstention: { answer: string; reason?: string }) => void;
   onToken?: (token: string) => void;
-  onGrounding?: (report: any) => void;
-  onNaive?: (naive: any) => void;
+  onGrounding?: (report: GroundingReport) => void;
+  onNaive?: (naive: NaiveGenerationResponse) => void;
   onDone?: (data: {
     model: string;
     provider: string;
     citations: string[];
     latency_ms: number;
-    metrics_comparison: Record<string, any>;
+    metrics_comparison: Record<string, string | number | null>;
   }) => void;
 }
 
@@ -220,13 +349,13 @@ export async function streamQuestionComparison(
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/generate/compare/stream`, {
+    res = await apiFetch(`${API_BASE_URL}/api/generate/compare/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal,
     });
-  } catch (err: unknown) {
+  } catch {
     if (signal?.aborted) return;
     throw new Error(
       `Cannot connect to backend server at ${API_BASE_URL}. Ensure uvicorn is running: uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload`
@@ -307,7 +436,7 @@ export async function submitQuestion(
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/generate/pipeline/qa`, {
+    res = await apiFetch(`${API_BASE_URL}/api/generate/pipeline/qa`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -396,13 +525,13 @@ export interface MemorySearchResult {
 }
 
 export async function fetchSessions(): Promise<Session[]> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions`, { cache: "no-store" });
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch sessions");
   return res.json();
 }
 
 export async function createSession(title: string, activeDocumentIds: string[] = []): Promise<Session> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, active_document_ids: activeDocumentIds }),
@@ -412,7 +541,7 @@ export async function createSession(title: string, activeDocumentIds: string[] =
 }
 
 export async function fetchSessionDetails(sessionId: string): Promise<SessionDetailsResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}`, { cache: "no-store" });
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch session ${sessionId}`);
   return res.json();
 }
@@ -421,7 +550,7 @@ export async function updateSessionPermissions(
   sessionId: string,
   permissions: MemoryPermissions
 ): Promise<MemoryPermissions> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/permissions`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/permissions`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(permissions),
@@ -431,14 +560,14 @@ export async function updateSessionPermissions(
 }
 
 export async function clearSessionMemory(sessionId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/clear`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/clear`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to clear session memory");
 }
 
 export async function searchMemory(query: string, sessionId?: string): Promise<MemorySearchResult> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/search`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, session_id: sessionId || null }),
@@ -453,7 +582,7 @@ export async function captureWebContent(payload: {
   selected_text: string;
   session_id?: string;
 }): Promise<EpisodicMemoryItem> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/capture-web`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/capture-web`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -463,7 +592,7 @@ export async function captureWebContent(payload: {
 }
 
 export async function exportSessionMemoryMarkdown(sessionId: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/export?format=markdown`);
+  const res = await apiFetch(`${API_BASE_URL}/api/memory/sessions/${sessionId}/export?format=markdown`);
   if (!res.ok) throw new Error("Failed to export memory");
   return res.text();
 }

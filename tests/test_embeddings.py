@@ -30,7 +30,9 @@ class TestEmbeddingEngine:
         # Compute L2 norm for each row
         norms = np.linalg.norm(embeddings, axis=1)
         for i, norm in enumerate(norms):
-            assert np.isclose(norm, 1.0, atol=1e-5), f"Vector {i} norm is {norm}, expected 1.0"
+            assert np.isclose(norm, 1.0, atol=1e-5), (
+                f"Vector {i} norm is {norm}, expected 1.0"
+            )
 
     def test_cosine_similarity_via_dot_product(self, engine):
         """Verify that dot product between L2-normalized vectors equals cosine similarity."""

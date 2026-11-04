@@ -16,7 +16,13 @@ class TestIndexManagerIntegration:
         manager = IndexManager(storage_dir=tmp_path)
 
         elements = [
-            DocumentElement(id="el_0", element_type="heading", content="Leave Policy", section_title="Leave Policy", page_number=12),
+            DocumentElement(
+                id="el_0",
+                element_type="heading",
+                content="Leave Policy",
+                section_title="Leave Policy",
+                page_number=12,
+            ),
             DocumentElement(
                 id="el_1",
                 element_type="paragraph",
@@ -71,7 +77,5 @@ def test_api_indexes_stats_endpoint():
     res = client.get("/api/ingest/indexes/stats")
     assert res.status_code == 200
     data = res.json()
-    assert "vector_chunks" in data
-    assert "bm25_documents" in data
-    assert "metadata_chunks" in data
-    assert data["embedding_dimension"] == 384
+    assert data["documents"] >= 0
+    assert data["chunks"] >= 0

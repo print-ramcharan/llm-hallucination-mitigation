@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
 
+from src.auth import owner_filters
 from src.context.compactor import default_context_compactor
 from src.context.models import CompactionRequest, OptimizedContext
 from src.query_processing.models import ConversationTurn
@@ -92,7 +93,7 @@ def run_full_context_pipeline(payload: FullContextPipelineRequest) -> OptimizedC
     retrieval_res = default_hybrid_retriever.retrieve(
         query=payload.query,
         conversation_history=payload.conversation_history,
-        filters=payload.filters,
+        filters=owner_filters(payload.filters),
         top_k_fused=payload.top_k_fused,
     )
 

@@ -45,6 +45,7 @@ models/
 indexes/
 data/indexes/
 data/memory/
+data/auth/
 *.faiss
 *.db
 

@@ -7,6 +7,8 @@ import { Navbar } from "@/components/Navbar";
 import { UploadZone } from "@/components/UploadZone";
 import { DocumentList } from "@/components/DocumentList";
 import { DocumentInspector } from "@/components/DocumentInspector";
+import { EvaluationWorkbench } from "@/components/EvaluationWorkbench";
+import { AuthPanel } from "@/components/AuthPanel";
 import { Toast, ToastMessage } from "@/components/Toast";
 import {
   checkHealth,
@@ -14,11 +16,14 @@ import {
   fetchDocumentById,
   fetchDocuments,
 } from "@/lib/api";
+import { AuthProfile, getSavedAuth, saveAuth } from "@/lib/api";
 import { Document, DocumentMetadata, HealthStatus } from "@/types/ingestion";
-import { Brain, FileText, MessageSquareQuote, Sparkles } from "lucide-react";
+import { Activity, Brain, FileText, MessageSquareQuote } from "lucide-react";
 
 export default function IngestionPage() {
-  const [activeTab, setActiveTab] = useState<"ingestion" | "qa" | "memory">("qa");
+  const [auth, setAuth] = useState<AuthProfile | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<"ingestion" | "qa" | "memory" | "evaluation">("qa");
   const [backendHealth, setBackendHealth] = useState<HealthStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
   const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
@@ -28,8 +33,26 @@ export default function IngestionPage() {
   const [isLoadingSelected, setIsLoadingSelected] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
+  useEffect(() => {
+    setAuth(getSavedAuth());
+    setAuthReady(true);
+  }, []);
+
+  useEffect(() => {
+    const expireSession = () => {
+      saveAuth(null);
+      setAuth(null);
+      setDocuments([]);
+      setSelectedDocId(null);
+      setSelectedDoc(null);
+    };
+    window.addEventListener("auth-expired", expireSession);
+    return () => window.removeEventListener("auth-expired", expireSession);
+  }, []);
+
   // Poll / check backend health & initial docs
   const loadHealthAndDocs = useCallback(async () => {
+    if (!auth) return;
     try {
       const health = await checkHealth();
       setBackendHealth(health);
@@ -51,9 +74,10 @@ export default function IngestionPage() {
     } finally {
       setIsLoadingDocs(false);
     }
-  }, [selectedDocId]);
+  }, [selectedDocId, auth]);
 
   useEffect(() => {
+    if (!authReady || !auth) return;
     loadHealthAndDocs();
     const interval = setInterval(() => {
       checkHealth()
@@ -67,7 +91,7 @@ export default function IngestionPage() {
         });
     }, 10000);
     return () => clearInterval(interval);
-  }, [loadHealthAndDocs]);
+  }, [loadHealthAndDocs, authReady, auth]);
 
   // Fetch full document when selectedDocId changes
   useEffect(() => {
@@ -130,13 +154,28 @@ export default function IngestionPage() {
     }
   };
 
+  const handleLogout = () => {
+    saveAuth(null);
+    setAuth(null);
+    setDocuments([]);
+    setSelectedDoc(null);
+    setSelectedDocId(null);
+  };
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">Loading secure workspace…</div>;
+  }
+  if (!auth) {
+    return <AuthPanel onAuthenticated={(profile) => { saveAuth(profile); setAuth(profile); }} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30">
       {/* Transient Toast Notification */}
       <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Top Navbar */}
-      <Navbar backendHealth={backendHealth} healthError={healthError} />
+      <Navbar backendHealth={backendHealth} healthError={healthError} username={auth.username} onLogout={handleLogout} />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -148,14 +187,18 @@ export default function IngestionPage() {
                 ? "LLM Hallucination Mitigation"
                 : activeTab === "ingestion"
                 ? "Document Repository"
-                : "Cross-Session Memory"}
+                : activeTab === "memory"
+                ? "Cross-Session Memory"
+                : "Research Evaluation"}
             </h1>
             <p className="mt-1 text-sm text-slate-400">
               {activeTab === "qa"
                 ? "Side-by-side comparison of Naive LLM vs. Our Grounded Application."
                 : activeTab === "ingestion"
                 ? "Upload and manage source documents, chunks, and metadata."
-                : "Inspect cross-session memory synchronization and summaries."}
+                : activeTab === "memory"
+                ? "Inspect cross-session memory synchronization and summaries."
+                : "Run annotated metric evaluations against the live application pipeline."}
             </p>
           </div>
 
@@ -193,6 +236,17 @@ export default function IngestionPage() {
               <Brain className="w-4 h-4" />
               Memory
             </button>
+            <button
+              onClick={() => setActiveTab("evaluation")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition ${
+                activeTab === "evaluation"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              Evaluate
+            </button>
           </div>
         </div>
 
@@ -205,6 +259,8 @@ export default function IngestionPage() {
           />
         ) : activeTab === "memory" ? (
           <CrossSessionMemory />
+        ) : activeTab === "evaluation" ? (
+          <EvaluationWorkbench document={selectedDoc} documentId={selectedDocId} />
         ) : (
           <>
             {/* Upload Zone */}

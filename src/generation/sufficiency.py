@@ -10,42 +10,227 @@ from src.generation.models import SufficiencyAssessment
 # Common stop words and query filler tokens to ignore when evaluating factual coverage
 # Common stop words, query filler tokens, and document-framing meta words
 _STOP_WORDS = {
-    "a", "an", "the", "and", "or", "in", "on", "at", "to", "for", "with", "about",
-    "by", "of", "from", "as", "is", "are", "was", "were", "be", "been", "being",
-    "what", "where", "when", "why", "how", "who", "which", "whose", "whom",
-    "can", "could", "should", "would", "do", "does", "did", "please", "tell",
-    "me", "explain", "describe", "detail", "give", "show", "find", "say", "according",
-    "into", "onto", "unto", "within", "without", "through", "over", "under", "above",
-    "below", "between", "among", "during", "before", "after", "across", "behind",
-    "per", "via", "it", "its", "they", "them", "their", "this", "that", "these", "those",
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "with",
+    "about",
+    "by",
+    "of",
+    "from",
+    "as",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "what",
+    "where",
+    "when",
+    "why",
+    "how",
+    "who",
+    "which",
+    "whose",
+    "whom",
+    "can",
+    "could",
+    "should",
+    "would",
+    "do",
+    "does",
+    "did",
+    "please",
+    "tell",
+    "me",
+    "explain",
+    "describe",
+    "detail",
+    "give",
+    "show",
+    "find",
+    "say",
+    "according",
+    "into",
+    "onto",
+    "unto",
+    "within",
+    "without",
+    "through",
+    "over",
+    "under",
+    "above",
+    "below",
+    "between",
+    "among",
+    "during",
+    "before",
+    "after",
+    "across",
+    "behind",
+    "per",
+    "via",
+    "it",
+    "its",
+    "they",
+    "them",
+    "their",
+    "this",
+    "that",
+    "these",
+    "those",
     # Document framing / meta terms
-    "document", "documents", "doc", "docs", "file", "files", "pdf", "docx", "txt",
-    "text", "texts", "article", "articles", "paper", "papers", "report", "reports",
-    "passage", "passages", "content", "contents", "context", "contexts", "page", "pages",
-    "mention", "mentions", "mentioned", "mentioning",
-    "state", "states", "stated", "stating", "list", "listed", "lists", "listing",
+    "document",
+    "documents",
+    "doc",
+    "docs",
+    "file",
+    "files",
+    "pdf",
+    "docx",
+    "txt",
+    "text",
+    "texts",
+    "article",
+    "articles",
+    "paper",
+    "papers",
+    "report",
+    "reports",
+    "passage",
+    "passages",
+    "content",
+    "contents",
+    "context",
+    "contexts",
+    "page",
+    "pages",
+    "mention",
+    "mentions",
+    "mentioned",
+    "mentioning",
+    "state",
+    "states",
+    "stated",
+    "stating",
+    "list",
+    "listed",
+    "lists",
+    "listing",
 }
 
 _SEMANTIC_SYNONYMS: dict[str, set[str]] = {
     "skill": {
-        "qualification", "qualifications", "requirement", "requirements",
-        "competency", "competencies", "proficiency", "proficiencies",
-        "ability", "abilities", "knowledge", "fundamentals", "expertise",
-        "experience", "programming", "technology", "technologies", "tools",
-        "python", "sql", "engineering", "responsibilities", "duties", "internship",
+        "qualification",
+        "qualifications",
+        "requirement",
+        "requirements",
+        "competency",
+        "competencies",
+        "proficiency",
+        "proficiencies",
+        "ability",
+        "abilities",
+        "knowledge",
+        "fundamentals",
+        "expertise",
+        "experience",
+        "programming",
+        "technology",
+        "technologies",
+        "tools",
+        "python",
+        "sql",
+        "engineering",
+        "responsibilities",
+        "duties",
+        "internship",
     },
     "skills": {
-        "qualification", "qualifications", "requirement", "requirements",
-        "competency", "competencies", "proficiency", "proficiencies",
-        "ability", "abilities", "knowledge", "fundamentals", "expertise",
-        "experience", "programming", "technology", "technologies", "tools",
-        "python", "sql", "engineering", "responsibilities", "duties", "internship",
+        "qualification",
+        "qualifications",
+        "requirement",
+        "requirements",
+        "competency",
+        "competencies",
+        "proficiency",
+        "proficiencies",
+        "ability",
+        "abilities",
+        "knowledge",
+        "fundamentals",
+        "expertise",
+        "experience",
+        "programming",
+        "technology",
+        "technologies",
+        "tools",
+        "python",
+        "sql",
+        "engineering",
+        "responsibilities",
+        "duties",
+        "internship",
     },
-    "qualification": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education", "degree"},
-    "qualifications": {"skill", "skills", "requirement", "requirements", "fundamentals", "experience", "education", "degree"},
-    "responsibility": {"duties", "tasks", "role", "work", "responsibilities", "solutions", "develop", "build"},
-    "responsibilities": {"duties", "tasks", "role", "work", "responsibility", "solutions", "develop", "build"},
-    "salary": {"compensation", "pay", "rate", "wage", "wages", "stipend", "remuneration", "benefits"},
+    "qualification": {
+        "skill",
+        "skills",
+        "requirement",
+        "requirements",
+        "fundamentals",
+        "experience",
+        "education",
+        "degree",
+    },
+    "qualifications": {
+        "skill",
+        "skills",
+        "requirement",
+        "requirements",
+        "fundamentals",
+        "experience",
+        "education",
+        "degree",
+    },
+    "responsibility": {
+        "duties",
+        "tasks",
+        "role",
+        "work",
+        "responsibilities",
+        "solutions",
+        "develop",
+        "build",
+    },
+    "responsibilities": {
+        "duties",
+        "tasks",
+        "role",
+        "work",
+        "responsibility",
+        "solutions",
+        "develop",
+        "build",
+    },
+    "salary": {
+        "compensation",
+        "pay",
+        "rate",
+        "wage",
+        "wages",
+        "stipend",
+        "remuneration",
+        "benefits",
+    },
     "leave": {"vacation", "pto", "holiday", "holidays", "absence", "time off"},
     "vacation": {"leave", "pto", "holiday", "holidays", "absence", "time off"},
     "benefit": {"perk", "perks", "insurance", "401k", "pension", "health", "dental"},
@@ -123,9 +308,7 @@ class EvidenceSufficiencyClassifier:
             items = evidence_items
 
         if not items:
-            abstention_msg = (
-                f"The available documents do not contain sufficient evidence to verify {topic}."
-            )
+            abstention_msg = f"The available documents do not contain sufficient evidence to verify {topic}."
             return SufficiencyAssessment(
                 is_sufficient=False,
                 sufficiency_score=0.0,
@@ -162,16 +345,22 @@ class EvidenceSufficiencyClassifier:
 
         for term in query_terms:
             stem = term.rstrip("s").rstrip("es")
-            syns = _SEMANTIC_SYNONYMS.get(term, set()) | _SEMANTIC_SYNONYMS.get(stem, set())
+            syns = _SEMANTIC_SYNONYMS.get(term, set()) | _SEMANTIC_SYNONYMS.get(
+                stem, set()
+            )
 
             # 1. Exact term match or stem match in evidence text
-            if term in combined_evidence or (len(stem) >= 3 and stem in combined_evidence):
+            if term in combined_evidence or (
+                len(stem) >= 3 and stem in combined_evidence
+            ):
                 matched_aspects.append(term)
             # 2. Semantic synonym match in evidence text
             elif any(syn in combined_evidence for syn in syns):
                 matched_aspects.append(term)
             # 3. Substring match for longer words
-            elif len(stem) >= 5 and any(stem[:4] in word for word in combined_evidence.split()):
+            elif len(stem) >= 5 and any(
+                stem[:4] in word for word in combined_evidence.split()
+            ):
                 matched_aspects.append(term)
             else:
                 missing_aspects.append(term)
@@ -179,16 +368,28 @@ class EvidenceSufficiencyClassifier:
         term_coverage = len(matched_aspects) / len(query_terms) if query_terms else 0.0
 
         # Query intent & entity constraints check
-        numeric_need = bool(re.search(r"\b(how many|how much|days|hours|percentage|cost|amount|date|year)\b", query, re.I))
+        numeric_need = bool(
+            re.search(
+                r"\b(how many|how much|days|hours|percentage|cost|amount|date|year)\b",
+                query,
+                re.I,
+            )
+        )
         numeric_found = bool(re.search(r"\b\d+(\.\d+)?\b", combined_evidence))
         numeric_alignment = 1.0 if (not numeric_need or numeric_found) else 0.4
 
         # Evidence quality multiplier (average salience or rerank score)
         salience_scores = [
-            float(item.metadata.get("salience_score", item.metadata.get("rerank_score", 0.5)))
+            float(
+                item.metadata.get(
+                    "salience_score", item.metadata.get("rerank_score", 0.5)
+                )
+            )
             for item in items
         ]
-        avg_salience = sum(salience_scores) / len(salience_scores) if salience_scores else 0.5
+        avg_salience = (
+            sum(salience_scores) / len(salience_scores) if salience_scores else 0.5
+        )
         clamped_salience = max(0.0, min(1.0, avg_salience))
 
         # Sufficiency score calculation:
@@ -217,9 +418,7 @@ class EvidenceSufficiencyClassifier:
                 if missing_aspects
                 else ""
             )
-            abstention_msg = (
-                f"The available documents do not contain sufficient evidence to verify {topic}.{missing_desc}"
-            )
+            abstention_msg = f"The available documents do not contain sufficient evidence to verify {topic}.{missing_desc}"
             reasoning = (
                 f"Evidence sufficiency score ({sufficiency_score:.2f}) falls below threshold ({tau:.2f}). "
                 f"Missing critical factual aspects: {', '.join(missing_aspects) if missing_aspects else 'None'}."

@@ -43,7 +43,9 @@ def sample_vacation_evidence() -> CompactedEvidence:
 
 
 @pytest.fixture
-def sample_optimized_context(sample_vacation_evidence: CompactedEvidence) -> OptimizedContext:
+def sample_optimized_context(
+    sample_vacation_evidence: CompactedEvidence,
+) -> OptimizedContext:
     """Fixture providing an OptimizedContext container with evidence."""
     formatted = (
         f"--- EVIDENCE {sample_vacation_evidence.citation_tag} (Source: HR_Policy_2024.pdf) ---\n"
@@ -66,10 +68,14 @@ def sample_optimized_context(sample_vacation_evidence: CompactedEvidence) -> Opt
 class TestEvidenceSufficiencyClassifier:
     """Tests the pre-flight Evidence Sufficiency Classifier and Truthful Abstention Protocol."""
 
-    def test_sufficient_evidence_passes(self, sample_optimized_context: OptimizedContext):
+    def test_sufficient_evidence_passes(
+        self, sample_optimized_context: OptimizedContext
+    ):
         classifier = EvidenceSufficiencyClassifier(default_threshold=0.40)
         query = "How many days of paid vacation leave do employees receive per year?"
-        assessment = classifier.assess_sufficiency(query=query, context=sample_optimized_context)
+        assessment = classifier.assess_sufficiency(
+            query=query, context=sample_optimized_context
+        )
 
         assert assessment.is_sufficient is True
         assert assessment.sufficiency_score >= 0.40
@@ -83,28 +89,40 @@ class TestEvidenceSufficiencyClassifier:
         classifier = EvidenceSufficiencyClassifier(default_threshold=0.40)
         # Query about an unmentioned topic: corporate pet guidelines
         query = "What is the corporate pet policy for bringing dogs into the office?"
-        assessment = classifier.assess_sufficiency(query=query, context=sample_optimized_context)
+        assessment = classifier.assess_sufficiency(
+            query=query, context=sample_optimized_context
+        )
 
         assert assessment.is_sufficient is False
         assert assessment.sufficiency_score < 0.40
         assert assessment.abstention_message is not None
-        assert "The available documents do not contain sufficient evidence to verify" in assessment.abstention_message
+        assert (
+            "The available documents do not contain sufficient evidence to verify"
+            in assessment.abstention_message
+        )
         assert len(assessment.missing_aspects) > 0
 
     def test_empty_evidence_triggers_immediate_abstention(self):
         classifier = EvidenceSufficiencyClassifier(default_threshold=0.40)
-        assessment = classifier.assess_sufficiency(query="Any question", context=None, evidence_items=[])
+        assessment = classifier.assess_sufficiency(
+            query="Any question", context=None, evidence_items=[]
+        )
 
         assert assessment.is_sufficient is False
         assert assessment.sufficiency_score == 0.0
         assert assessment.abstention_message is not None
-        assert "The available documents do not contain sufficient evidence" in assessment.abstention_message
+        assert (
+            "The available documents do not contain sufficient evidence"
+            in assessment.abstention_message
+        )
 
 
 class TestGroundedPromptSynthesizer:
     """Tests prompt construction and citation requirement injection."""
 
-    def test_synthesize_prompt_structure(self, sample_optimized_context: OptimizedContext):
+    def test_synthesize_prompt_structure(
+        self, sample_optimized_context: OptimizedContext
+    ):
         synthesizer = GroundedPromptSynthesizer()
         prompt = synthesizer.synthesize_prompt(
             query="How many vacation days are granted?",
@@ -117,11 +135,15 @@ class TestGroundedPromptSynthesizer:
         assert "How many vacation days are granted?" in prompt
         assert "GROUNDED ANSWER" in prompt
 
-    def test_conversation_history_injection(self, sample_optimized_context: OptimizedContext):
+    def test_conversation_history_injection(
+        self, sample_optimized_context: OptimizedContext
+    ):
         synthesizer = GroundedPromptSynthesizer()
         history = [
             ConversationTurn(role="user", content="Hello, I have an HR question."),
-            ConversationTurn(role="assistant", content="Sure! What would you like to know?"),
+            ConversationTurn(
+                role="assistant", content="Sure! What would you like to know?"
+            ),
         ]
         prompt = synthesizer.synthesize_prompt(
             query="What is the leave allowance?",
@@ -137,11 +159,15 @@ class TestGroundedPromptSynthesizer:
 class TestAntiHallucinationVerifier:
     """Tests sentence-level NLI verification and contradiction detection."""
 
-    def test_entailed_claim_verification(self, sample_vacation_evidence: CompactedEvidence):
+    def test_entailed_claim_verification(
+        self, sample_vacation_evidence: CompactedEvidence
+    ):
         verifier = AntiHallucinationVerifier(default_tolerance=0.70)
         answer = "Employees are granted 20 days of paid annual vacation leave per calendar year [Doc 1, Chunk 0]."
 
-        report = verifier.verify_answer(answer=answer, evidence_items=[sample_vacation_evidence])
+        report = verifier.verify_answer(
+            answer=answer, evidence_items=[sample_vacation_evidence]
+        )
 
         assert report.total_claims == 1
         assert report.entailed_claims_count == 1
@@ -150,12 +176,16 @@ class TestAntiHallucinationVerifier:
         assert report.hallucination_detected is False
         assert "[Doc 1, Chunk 0]" in report.verified_citations
 
-    def test_numerical_contradiction_detected(self, sample_vacation_evidence: CompactedEvidence):
+    def test_numerical_contradiction_detected(
+        self, sample_vacation_evidence: CompactedEvidence
+    ):
         verifier = AntiHallucinationVerifier(default_tolerance=0.70)
         # Context states 20 days, but claim asserts 60 days
         answer = "Employees receive 60 days of annual vacation leave [Doc 1, Chunk 0]."
 
-        report = verifier.verify_answer(answer=answer, evidence_items=[sample_vacation_evidence])
+        report = verifier.verify_answer(
+            answer=answer, evidence_items=[sample_vacation_evidence]
+        )
 
         assert report.total_claims == 1
         assert report.contradicted_claims_count == 1
@@ -163,12 +193,16 @@ class TestAntiHallucinationVerifier:
         assert report.claims[0].status == ClaimStatus.CONTRADICTED
         assert "Numerical contradiction" in (report.claims[0].reasoning or "")
 
-    def test_unverified_citation_flagged(self, sample_vacation_evidence: CompactedEvidence):
+    def test_unverified_citation_flagged(
+        self, sample_vacation_evidence: CompactedEvidence
+    ):
         verifier = AntiHallucinationVerifier(default_tolerance=0.70)
         # Citation tag [Doc 99, Chunk 99] is fabricated and not in evidence context
         answer = "Employees submit requests through the portal [Doc 99, Chunk 99]."
 
-        report = verifier.verify_answer(answer=answer, evidence_items=[sample_vacation_evidence])
+        report = verifier.verify_answer(
+            answer=answer, evidence_items=[sample_vacation_evidence]
+        )
 
         assert "[Doc 99, Chunk 99]" in report.unverified_citations
 
@@ -203,7 +237,10 @@ class TestGroundedGenerator:
 
         assert response.abstained is True
         assert response.sufficiency.is_sufficient is False
-        assert "The available documents do not contain sufficient evidence" in response.answer
+        assert (
+            "The available documents do not contain sufficient evidence"
+            in response.answer
+        )
 
     def test_generate_stream_yields_sse_events(
         self, sample_optimized_context: OptimizedContext
@@ -236,7 +273,9 @@ class TestGenerationApiEndpoints:
         assert data["abstention_protocol"] == "enabled"
         assert "default_sufficiency_threshold" in data
 
-    def test_api_generate_answer_sufficient(self, sample_optimized_context: OptimizedContext):
+    def test_api_generate_answer_sufficient(
+        self, sample_optimized_context: OptimizedContext
+    ):
         payload = {
             "query": "How many days of annual vacation leave are granted?",
             "context": sample_optimized_context.model_dump(),
@@ -249,7 +288,9 @@ class TestGenerationApiEndpoints:
         assert len(data["citations"]) > 0
         assert "grounding_report" in data
 
-    def test_api_generate_answer_abstention(self, sample_optimized_context: OptimizedContext):
+    def test_api_generate_answer_abstention(
+        self, sample_optimized_context: OptimizedContext
+    ):
         payload = {
             "query": "What is the pet policy for lizards?",
             "context": sample_optimized_context.model_dump(),
@@ -259,7 +300,10 @@ class TestGenerationApiEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert data["abstained"] is True
-        assert "The available documents do not contain sufficient evidence" in data["answer"]
+        assert (
+            "The available documents do not contain sufficient evidence"
+            in data["answer"]
+        )
 
     def test_api_generate_stream(self, sample_optimized_context: OptimizedContext):
         payload = {
@@ -407,5 +451,7 @@ class TestGenerationApiEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert data["abstained"] is True
-        assert "The available documents do not contain sufficient evidence" in data["answer"]
-
+        assert (
+            "The available documents do not contain sufficient evidence"
+            in data["answer"]
+        )

@@ -102,7 +102,9 @@ class OfflineGroundedEngine(BaseInferenceEngine):
 
     def _extract_query(self, prompt: str) -> str:
         """Extract the query string from the prompt."""
-        m = re.search(r"USER QUERY:\s*\n(.*?)(?=\n\nGROUNDED ANSWER|$)", prompt, re.DOTALL)
+        m = re.search(
+            r"USER QUERY:\s*\n(.*?)(?=\n\nGROUNDED ANSWER|$)", prompt, re.DOTALL
+        )
         return m.group(1).strip() if m else ""
 
     def generate(
@@ -122,6 +124,7 @@ class OfflineGroundedEngine(BaseInferenceEngine):
         query_words = set(re.findall(r"\b[a-zA-Z0-9_\-\.]{2,}\b", query.lower()))
         # Filter stopwords
         from src.generation.sufficiency import _SEMANTIC_SYNONYMS, _STOP_WORDS
+
         content_words = {w for w in query_words if w not in _STOP_WORDS}
         expanded_words = set(content_words)
         for w in content_words:
@@ -197,7 +200,9 @@ class OpenAICompatibleEngine(BaseInferenceEngine):
         model_name: str | None = None,
     ) -> None:
         self.base_url = (
-            base_url or os.getenv("OPENAI_BASE_URL") or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            base_url
+            or os.getenv("OPENAI_BASE_URL")
+            or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         ).rstrip("/")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "dummy-key")
         self._model_name = model_name or os.getenv("OPENAI_MODEL_NAME", "llama3.2")
@@ -233,7 +238,9 @@ class OpenAICompatibleEngine(BaseInferenceEngine):
 
         with httpx.Client(timeout=60.0) as client:
             try:
-                resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                resp = client.post(
+                    f"{self.base_url}/chat/completions", headers=headers, json=payload
+                )
                 resp.raise_for_status()
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
@@ -246,7 +253,9 @@ class OpenAICompatibleEngine(BaseInferenceEngine):
                     raise RuntimeError(
                         f"LLM API authorization failed (HTTP {e.response.status_code}) for model '{self._model_name}'. Configure a valid API key or switch to 'Offline (Deterministic)'."
                     )
-                raise RuntimeError(f"LLM API error (HTTP {e.response.status_code}): {e.response.text[:200]}")
+                raise RuntimeError(
+                    f"LLM API error (HTTP {e.response.status_code}): {e.response.text[:200]}"
+                )
 
     def generate_stream(
         self,
@@ -277,7 +286,10 @@ class OpenAICompatibleEngine(BaseInferenceEngine):
 
         with httpx.Client(timeout=60.0) as client:
             with client.stream(
-                "POST", f"{self.base_url}/chat/completions", headers=headers, json=payload
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
             ) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
@@ -306,7 +318,9 @@ class AnthropicEngine(BaseInferenceEngine):
         model_name: str | None = None,
     ) -> None:
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY", "")
-        self._model_name = model_name or os.getenv("ANTHROPIC_MODEL_NAME", "claude-3-5-sonnet-20241022")
+        self._model_name = model_name or os.getenv(
+            "ANTHROPIC_MODEL_NAME", "claude-3-5-sonnet-20241022"
+        )
 
     @property
     def model_name(self) -> str:
@@ -320,8 +334,13 @@ class AnthropicEngine(BaseInferenceEngine):
         max_tokens: int = 1024,
     ) -> str:
         if not self.api_key:
-            return OfflineGroundedEngine(model_name=f"{self._model_name}-offline").generate(
-                prompt=prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=max_tokens
+            return OfflineGroundedEngine(
+                model_name=f"{self._model_name}-offline"
+            ).generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
             )
         import httpx
 
@@ -339,16 +358,26 @@ class AnthropicEngine(BaseInferenceEngine):
         }
         with httpx.Client(timeout=60.0) as client:
             try:
-                resp = client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload)
+                resp = client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers=headers,
+                    json=payload,
+                )
                 resp.raise_for_status()
                 data = resp.json()
                 return data["content"][0]["text"]
             except httpx.ConnectError:
-                raise RuntimeError("Cannot connect to Anthropic API. Check your network or switch to 'Offline (Deterministic)'.")
+                raise RuntimeError(
+                    "Cannot connect to Anthropic API. Check your network or switch to 'Offline (Deterministic)'."
+                )
             except httpx.HTTPStatusError as e:
                 if e.response.status_code in (401, 403):
-                    raise RuntimeError(f"Anthropic API authorization failed (HTTP {e.response.status_code}). Configure ANTHROPIC_API_KEY or switch to 'Offline (Deterministic)'.")
-                raise RuntimeError(f"Anthropic API error (HTTP {e.response.status_code}): {e.response.text[:200]}")
+                    raise RuntimeError(
+                        f"Anthropic API authorization failed (HTTP {e.response.status_code}). Configure ANTHROPIC_API_KEY or switch to 'Offline (Deterministic)'."
+                    )
+                raise RuntimeError(
+                    f"Anthropic API error (HTTP {e.response.status_code}): {e.response.text[:200]}"
+                )
 
     def generate_stream(
         self,
@@ -358,7 +387,10 @@ class AnthropicEngine(BaseInferenceEngine):
         max_tokens: int = 1024,
     ) -> Iterator[str]:
         full_text = self.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=max_tokens
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
         tokens = re.findall(r"\S+\s*", full_text)
         yield from tokens
@@ -372,8 +404,12 @@ class GeminiEngine(BaseInferenceEngine):
         api_key: str | None = None,
         model_name: str | None = None,
     ) -> None:
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
-        self._model_name = model_name or os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+        self.api_key = (
+            api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+        )
+        self._model_name = model_name or os.getenv(
+            "GEMINI_MODEL_NAME", "gemini-1.5-flash"
+        )
 
     @property
     def model_name(self) -> str:
@@ -467,7 +503,9 @@ class GroqEngine(BaseInferenceEngine):
         model_name: str | None = None,
     ) -> None:
         self.api_key = api_key or os.getenv("GROQ_API_KEY", "")
-        self._model_name = model_name or os.getenv("GROQ_MODEL_NAME", "llama-3.3-70b-versatile")
+        self._model_name = model_name or os.getenv(
+            "GROQ_MODEL_NAME", "llama-3.3-70b-versatile"
+        )
         self.base_url = "https://api.groq.com/openai/v1"
 
     @property
@@ -507,7 +545,9 @@ class GroqEngine(BaseInferenceEngine):
             "stream": False,
         }
         with httpx.Client(timeout=45.0) as client:
-            resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+            resp = client.post(
+                f"{self.base_url}/chat/completions", headers=headers, json=payload
+            )
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
@@ -541,7 +581,10 @@ class GroqEngine(BaseInferenceEngine):
         }
         with httpx.Client(timeout=45.0) as client:
             with client.stream(
-                "POST", f"{self.base_url}/chat/completions", headers=headers, json=payload
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
             ) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
@@ -572,7 +615,9 @@ class OpenRouterEngine(BaseInferenceEngine):
         model_name: str | None = None,
     ) -> None:
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
-        self._model_name = model_name or os.getenv("OPENROUTER_MODEL_NAME", "meta-llama/llama-3.3-70b-instruct")
+        self._model_name = model_name or os.getenv(
+            "OPENROUTER_MODEL_NAME", "meta-llama/llama-3.3-70b-instruct"
+        )
         self.base_url = "https://openrouter.ai/api/v1"
 
     @property
@@ -614,7 +659,9 @@ class OpenRouterEngine(BaseInferenceEngine):
             "stream": False,
         }
         with httpx.Client(timeout=45.0) as client:
-            resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+            resp = client.post(
+                f"{self.base_url}/chat/completions", headers=headers, json=payload
+            )
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
@@ -650,7 +697,10 @@ class OpenRouterEngine(BaseInferenceEngine):
         }
         with httpx.Client(timeout=45.0) as client:
             with client.stream(
-                "POST", f"{self.base_url}/chat/completions", headers=headers, json=payload
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
             ) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
@@ -717,7 +767,9 @@ class FallbackInferenceEngine(BaseInferenceEngine):
     @property
     def last_used_name(self) -> str:
         if self._last_used_engine:
-            return getattr(self._last_used_engine, "name", self._last_used_engine.model_name)
+            return getattr(
+                self._last_used_engine, "name", self._last_used_engine.model_name
+            )
         return "Auto-Fallback"
 
     def is_configured(self) -> bool:
@@ -733,27 +785,37 @@ class FallbackInferenceEngine(BaseInferenceEngine):
         configured_engines = [e for e in self.engines if e.is_configured()]
 
         if not configured_engines:
-            logger.warning("[FallbackEngine] No API keys in .env. Using offline emergency synthesis.")
+            logger.warning(
+                "[FallbackEngine] No API keys in .env. Using offline emergency synthesis."
+            )
             self._last_used_engine = self._emergency_offline
-            return self._emergency_offline.generate(prompt, system_prompt, temperature, max_tokens)
+            return self._emergency_offline.generate(
+                prompt, system_prompt, temperature, max_tokens
+            )
 
         errors: list[str] = []
         for engine in configured_engines:
             try:
-                logger.info(f"[FallbackEngine] Attempting generation with {engine.name} ({engine.model_name})...")
+                logger.info(
+                    f"[FallbackEngine] Attempting generation with {engine.name} ({engine.model_name})..."
+                )
                 answer = engine.generate(prompt, system_prompt, temperature, max_tokens)
                 self._last_used_engine = engine
                 logger.info(f"[FallbackEngine] Succeeded with {engine.name}.")
                 return answer
             except Exception as err:
-                logger.warning(f"[FallbackEngine] Provider {engine.name} failed: {err}. Cascading to next...")
+                logger.warning(
+                    f"[FallbackEngine] Provider {engine.name} failed: {err}. Cascading to next..."
+                )
                 errors.append(f"{engine.name}: {err}")
 
         err_summary = "; ".join(errors)
         logger.error(f"[FallbackEngine] All providers failed: {err_summary}")
         self._last_used_engine = self._emergency_offline
         fallback_note = f"[Notice: Cloud LLM providers were unavailable ({err_summary}). Running offline fallback.]\n\n"
-        return fallback_note + self._emergency_offline.generate(prompt, system_prompt, temperature, max_tokens)
+        return fallback_note + self._emergency_offline.generate(
+            prompt, system_prompt, temperature, max_tokens
+        )
 
     def generate_stream(
         self,
@@ -765,9 +827,13 @@ class FallbackInferenceEngine(BaseInferenceEngine):
         configured_engines = [e for e in self.engines if e.is_configured()]
 
         if not configured_engines:
-            logger.warning("[FallbackEngine] No API keys in .env. Using offline emergency synthesis.")
+            logger.warning(
+                "[FallbackEngine] No API keys in .env. Using offline emergency synthesis."
+            )
             self._last_used_engine = self._emergency_offline
-            yield from self._emergency_offline.generate_stream(prompt, system_prompt, temperature, max_tokens)
+            yield from self._emergency_offline.generate_stream(
+                prompt, system_prompt, temperature, max_tokens
+            )
             return
 
         errors: list[str] = []
@@ -775,8 +841,12 @@ class FallbackInferenceEngine(BaseInferenceEngine):
 
         for engine in configured_engines:
             try:
-                logger.info(f"[FallbackEngine] Connecting stream with {engine.name} ({engine.model_name})...")
-                token_iterator = engine.generate_stream(prompt, system_prompt, temperature, max_tokens)
+                logger.info(
+                    f"[FallbackEngine] Connecting stream with {engine.name} ({engine.model_name})..."
+                )
+                token_iterator = engine.generate_stream(
+                    prompt, system_prompt, temperature, max_tokens
+                )
                 first_token = next(token_iterator, None)
                 self._last_used_engine = engine
                 stream_started = True
@@ -787,7 +857,9 @@ class FallbackInferenceEngine(BaseInferenceEngine):
                     yield token
                 return
             except Exception as err:
-                logger.warning(f"[FallbackEngine] Stream with {engine.name} failed: {err}. Cascading...")
+                logger.warning(
+                    f"[FallbackEngine] Stream with {engine.name} failed: {err}. Cascading..."
+                )
                 errors.append(f"{engine.name}: {err}")
                 if stream_started:
                     raise
@@ -796,7 +868,9 @@ class FallbackInferenceEngine(BaseInferenceEngine):
         logger.error(f"[FallbackEngine] All streaming providers failed: {err_summary}")
         self._last_used_engine = self._emergency_offline
         yield f"[Notice: Cloud LLM providers were unavailable ({err_summary}). Running offline fallback.]\n\n"
-        yield from self._emergency_offline.generate_stream(prompt, system_prompt, temperature, max_tokens)
+        yield from self._emergency_offline.generate_stream(
+            prompt, system_prompt, temperature, max_tokens
+        )
 
 
 class EngineFactory:
@@ -827,4 +901,3 @@ class EngineFactory:
 
 default_fallback_engine = FallbackInferenceEngine()
 default_inference_engine = default_fallback_engine
-

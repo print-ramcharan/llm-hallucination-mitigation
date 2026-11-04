@@ -7,9 +7,11 @@ import { HealthStatus } from "@/types/ingestion";
 interface NavbarProps {
   backendHealth: HealthStatus | null;
   healthError: boolean;
+  username?: string;
+  onLogout?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ backendHealth, healthError }) => {
+export const Navbar: React.FC<NavbarProps> = ({ backendHealth, healthError, username, onLogout }) => {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800 px-6 py-3.5">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
@@ -23,14 +25,14 @@ export const Navbar: React.FC<NavbarProps> = ({ backendHealth, healthError }) =>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-base font-bold tracking-tight text-white">
-                Mitigating Context Degradation
+                Mitigating Context Degradation in LLMs
               </span>
               <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                Module 01
+                RAG Workspace
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Document Knowledge Base & Context Retrieval
+              External Memory · Hybrid Retrieval · Grounded Answers
             </p>
           </div>
         </div>
@@ -67,8 +69,10 @@ export const Navbar: React.FC<NavbarProps> = ({ backendHealth, healthError }) =>
               Connecting backend...
             </div>
           )}
+          {username && onLogout && <button onClick={onLogout} className="rounded-full border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">{username} · Sign out</button>}
         </div>
       </div>
     </header>
   );
 };
+

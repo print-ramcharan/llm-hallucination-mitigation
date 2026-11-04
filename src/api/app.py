@@ -5,18 +5,21 @@ import os
 import re
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api.auth_routes import router as auth_router
 from src.api.context_routes import router as context_router
+from src.api.evaluation_routes import router as evaluation_router
 from src.api.generation_routes import router as generation_router
 from src.api.memory_routes import router as memory_router
 from src.api.query_routes import router as query_router
 from src.api.rerank_routes import router as rerank_router
 from src.api.retrieval_routes import router as retrieval_router
 from src.api.routes import router as ingestion_router
+from src.auth import UserContextMiddleware, authenticated_user
 from src.ingestion.registry import default_registry
 
 load_dotenv()
@@ -26,7 +29,7 @@ logger = logging.getLogger("uvicorn.error")
 def create_app() -> FastAPI:
     """Factory creating configured FastAPI application."""
     app = FastAPI(
-        title="LLM Hallucination & Context Degradation Mitigation API",
+        title="Mitigating Context Degradation in LLMs Using External Memory and Hybrid Retrieval API",
         description="Backend API supporting multi-format document ingestion, hybrid retrieval, and context optimization.",
         version="0.1.0",
     )
@@ -34,9 +37,7 @@ def create_app() -> FastAPI:
     # Configure CORS origins safely
     origins_env = os.getenv("ALLOWED_ORIGINS", "")
     allowed_origins = [
-        origin.strip()
-        for origin in origins_env.split(",")
-        if origin.strip()
+        origin.strip() for origin in origins_env.split(",") if origin.strip()
     ] or [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -72,7 +73,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
         headers = get_cors_headers(request)
         return JSONResponse(
             status_code=422,
@@ -82,7 +85,9 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
-        logger.exception(f"Unhandled error on {request.method} {request.url.path}: {exc}")
+        logger.exception(
+            f"Unhandled error on {request.method} {request.url.path}: {exc}"
+        )
         headers = get_cors_headers(request)
         return JSONResponse(
             status_code=500,
@@ -98,15 +103,19 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(UserContextMiddleware)
 
     # Mount routes
-    app.include_router(ingestion_router)
-    app.include_router(query_router)
-    app.include_router(retrieval_router)
-    app.include_router(rerank_router)
-    app.include_router(context_router)
-    app.include_router(generation_router)
-    app.include_router(memory_router)
+    app.include_router(auth_router)
+    protected = [Depends(authenticated_user)]
+    app.include_router(ingestion_router, dependencies=protected)
+    app.include_router(query_router, dependencies=protected)
+    app.include_router(retrieval_router, dependencies=protected)
+    app.include_router(rerank_router, dependencies=protected)
+    app.include_router(context_router, dependencies=protected)
+    app.include_router(generation_router, dependencies=protected)
+    app.include_router(memory_router, dependencies=protected)
+    app.include_router(evaluation_router, dependencies=protected)
 
     @app.get("/api/health", tags=["Health"])
     def health_check():
@@ -127,3 +136,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("src.api.app:app", host="127.0.0.1", port=8000, reload=True)
+

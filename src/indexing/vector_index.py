@@ -59,7 +59,9 @@ class FaissVectorIndex:
         self._index.add(vectors)
 
         for chunk, vec in zip(chunks, vectors, strict=True):
-            chunk_id = chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            chunk_id = (
+                chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            )
             doc_id = chunk.document_id
 
             self._id_to_chunk.append(chunk_id)

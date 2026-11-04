@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Document Ingestion | Mitigating Context Degradation",
-  description: "Heterogeneous document ingestion and canonical object normalization for LLM hallucination mitigation.",
+  title: "Mitigating Context Degradation in LLMs Using External Memory and Hybrid Retrieval",
+  description: "Upload documents, ask questions, and get cited answers with hybrid retrieval and external memory.",
 };
 
 export default function RootLayout({
@@ -33,3 +33,4 @@ export default function RootLayout({
     </html>
   );
 }
+

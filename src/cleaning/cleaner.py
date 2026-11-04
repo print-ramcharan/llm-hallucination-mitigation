@@ -21,7 +21,9 @@ class DocumentCleaner:
     """
 
     # Matches split hyphenated words across lines (e.g. 'degrad-\nation' -> 'degradation')
-    HYPHENATED_LINEBREAK_REGEX = re.compile(r"(\b[A-Za-z]{2,})-\s*\n\s*([A-Za-z]{2,}\b)")
+    HYPHENATED_LINEBREAK_REGEX = re.compile(
+        r"(\b[A-Za-z]{2,})-\s*\n\s*([A-Za-z]{2,}\b)"
+    )
 
     # Standalone page number patterns: "Page 12", "12 of 45", "12/45", "— 12 —", "- 12 -", "[12]", solitary digits
     PAGE_NUMBER_REGEX = re.compile(
@@ -68,7 +70,9 @@ class DocumentCleaner:
             return []
 
         # Step 1: Detect recurring page headers/footers across pages
-        running_headers, running_footers = self._detect_running_headers_footers(elements)
+        running_headers, running_footers = self._detect_running_headers_footers(
+            elements
+        )
 
         cleaned_elements: list[DocumentElement] = []
         last_heading_content: str | None = None
@@ -101,7 +105,10 @@ class DocumentCleaner:
             stripped_single = raw_text.strip()
             if self.PAGE_NUMBER_REGEX.match(stripped_single):
                 continue
-            if stripped_single.lower() in running_headers or stripped_single.lower() in running_footers:
+            if (
+                stripped_single.lower() in running_headers
+                or stripped_single.lower() in running_footers
+            ):
                 continue
 
             # Clean element text
@@ -317,12 +324,20 @@ class DocumentCleaner:
                 continue
 
             # Top element on page (candidate header)
-            first_lines = [line_str.strip().lower() for line_str in el_list[0].content.splitlines() if line_str.strip()]
+            first_lines = [
+                line_str.strip().lower()
+                for line_str in el_list[0].content.splitlines()
+                if line_str.strip()
+            ]
             if first_lines and len(first_lines[0]) < 120:
                 page_headers[first_lines[0]] += 1
 
             # Bottom element on page (candidate footer)
-            last_lines = [line_str.strip().lower() for line_str in el_list[-1].content.splitlines() if line_str.strip()]
+            last_lines = [
+                line_str.strip().lower()
+                for line_str in el_list[-1].content.splitlines()
+                if line_str.strip()
+            ]
             if last_lines and len(last_lines[-1]) < 120:
                 page_footers[last_lines[-1]] += 1
 

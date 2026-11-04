@@ -52,7 +52,9 @@ class BM25Index:
             return
 
         for chunk in chunks:
-            chunk_id = chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            chunk_id = (
+                chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            )
             doc_id = chunk.document_id
 
             tokens = bm25_tokenize(chunk.content)

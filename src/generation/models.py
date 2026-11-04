@@ -22,8 +22,12 @@ class ClaimStatus(str, Enum):
 class ClaimVerification(BaseModel):
     """Fine-grained verification telemetry for an individual claim extracted from generated output."""
 
-    claim_text: str = Field(..., description="The individual claim statement extracted from the answer.")
-    status: ClaimStatus = Field(..., description="NLI verification classification against provided evidence.")
+    claim_text: str = Field(
+        ..., description="The individual claim statement extracted from the answer."
+    )
+    status: ClaimStatus = Field(
+        ..., description="NLI verification classification against provided evidence."
+    )
     confidence: float = Field(
         ...,
         ge=0.0,
@@ -100,9 +104,15 @@ class GroundingReport(BaseModel):
         ...,
         description="True if any claim is contradicted or if faithfulness is below acceptable tolerance.",
     )
-    total_claims: int = Field(default=0, description="Total number of atomic claims evaluated.")
-    entailed_claims_count: int = Field(default=0, description="Number of claims directly entailed by evidence.")
-    neutral_claims_count: int = Field(default=0, description="Number of claims lacking direct evidence support.")
+    total_claims: int = Field(
+        default=0, description="Total number of atomic claims evaluated."
+    )
+    entailed_claims_count: int = Field(
+        default=0, description="Number of claims directly entailed by evidence."
+    )
+    neutral_claims_count: int = Field(
+        default=0, description="Number of claims lacking direct evidence support."
+    )
     contradicted_claims_count: int = Field(
         default=0,
         description="Number of claims directly refuted by evidence facts.",
@@ -171,7 +181,9 @@ class GenerationResponse(BaseModel):
     """Complete response payload containing generated answer, grounding telemetry, and provenance."""
 
     query: str = Field(..., description="Query evaluated.")
-    answer: str = Field(..., description="Grounded answer text or truthful abstention statement.")
+    answer: str = Field(
+        ..., description="Grounded answer text or truthful abstention statement."
+    )
     abstained: bool = Field(
         ...,
         description="True if generator triggered the Abstention Protocol due to insufficient evidence.",
@@ -205,17 +217,28 @@ class GenerationResponse(BaseModel):
 class StreamEvent(BaseModel):
     """Server-Sent Event (SSE) message payload for real-time token streaming."""
 
-    event: str = Field(..., description="Event type: 'sufficiency', 'token', 'grounding', 'done', 'error'")
-    data: dict[str, Any] = Field(..., description="Structured payload associated with the event.")
+    event: str = Field(
+        ...,
+        description="Event type: 'sufficiency', 'token', 'grounding', 'done', 'error'",
+    )
+    data: dict[str, Any] = Field(
+        ..., description="Structured payload associated with the event."
+    )
 
 
 class NaiveGenerationResponse(BaseModel):
     """Response produced by a naive/baseline LLM without hybrid retrieval or evidence gating."""
 
     query: str = Field(..., description="User query evaluated.")
-    answer: str = Field(..., description="Direct naive LLM output without evidence citations.")
-    has_citations: bool = Field(default=False, description="Whether citations are present.")
-    citations: list[str] = Field(default_factory=list, description="List of citations (empty for naive).")
+    answer: str = Field(
+        ..., description="Direct naive LLM output without evidence citations."
+    )
+    has_citations: bool = Field(
+        default=False, description="Whether citations are present."
+    )
+    citations: list[str] = Field(
+        default_factory=list, description="List of citations (empty for naive)."
+    )
     faithfulness_score: float | None = Field(
         default=None,
         description="Faithfulness score (unverified for naive).",
@@ -225,15 +248,21 @@ class NaiveGenerationResponse(BaseModel):
         description="Assessed hallucination risk level.",
     )
     latency_ms: float = Field(..., description="Generation latency in milliseconds.")
-    model_name: str = Field(..., description="Model identifier used for naive inference.")
+    model_name: str = Field(
+        ..., description="Model identifier used for naive inference."
+    )
 
 
 class ComparisonResponse(BaseModel):
     """Side-by-side comparison payload evaluating Naive LLM vs Our Grounded Mitigation Pipeline."""
 
     query: str = Field(..., description="The query processed by both pipelines.")
-    naive: NaiveGenerationResponse = Field(..., description="Baseline Naive LLM output.")
-    grounded: GenerationResponse = Field(..., description="Our Grounded Mitigation Pipeline output.")
+    naive: NaiveGenerationResponse = Field(
+        ..., description="Baseline Naive LLM output."
+    )
+    grounded: GenerationResponse = Field(
+        ..., description="Our Grounded Mitigation Pipeline output."
+    )
     metrics_comparison: dict[str, Any] = Field(
         default_factory=dict,
         description="Summary comparison metrics (citations, hallucination risk, sufficiency, NLI).",

@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ComparisonResponse,
   GroundedAnswerResponse,
+  GroundingReport,
+  NaiveGenerationResponse,
+  SufficiencyAssessment,
+  Session,
+  EpisodicMemoryItem,
+  createSession,
+  fetchSessionDetails,
+  fetchSessions,
   streamQuestionComparison,
 } from "@/lib/api";
 import { Document, DocumentMetadata } from "@/types/ingestion";
@@ -45,9 +53,51 @@ export function GroundedQA({
   const [comparison, setComparison] = useState<ComparisonResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showUploadZone, setShowUploadZone] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
+  const [conversationTurns, setConversationTurns] = useState<EpisodicMemoryItem[]>([]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const selectedDoc = documents.find((d) => d.document_id === selectedDocId);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchSessions().then(async (existing) => {
+      if (!mounted) return;
+      if (existing.length) {
+        setSessions(existing);
+        setActiveSessionId(existing.find((session) => session.is_active)?.session_id ?? existing[0].session_id);
+      } else {
+        const created = await createSession("New conversation");
+        if (mounted) {
+          setSessions([created]);
+          setActiveSessionId(created.session_id);
+        }
+      }
+    }).catch((err) => setError(err instanceof Error ? err.message : "Could not load conversations."));
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!activeSessionId) { setConversationTurns([]); return; }
+    let mounted = true;
+    fetchSessionDetails(activeSessionId).then((details) => {
+      if (mounted) setConversationTurns(details.turns);
+    }).catch(() => { if (mounted) setConversationTurns([]); });
+    return () => { mounted = false; };
+  }, [activeSessionId]);
+
+  const startNewConversation = async () => {
+    try {
+      const created = await createSession(`Conversation ${sessions.length + 1}`, selectedDocId ? [selectedDocId] : []);
+      setSessions((current) => [created, ...current]);
+      setActiveSessionId(created.session_id);
+      setComparison(null);
+      setQuery("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create a conversation.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,15 +119,15 @@ export function GroundedQA({
     setActiveProvider(null);
 
     let accumulatedTokens = "";
-    let capturedSufficiency: any = null;
-    let capturedGrounding: any = null;
-    let capturedNaive: any = null;
+    let capturedSufficiency: SufficiencyAssessment | null = null;
+    let capturedGrounding: GroundingReport | null = null;
+    let capturedNaive: NaiveGenerationResponse | null = null;
     let capturedProvider = "Auto-Fallback Cascade";
 
     try {
       await streamQuestionComparison(
         query.trim(),
-        undefined,
+        activeSessionId,
         selectedDocId || undefined,
         {
           onStage: (stage, message) => {
@@ -122,14 +172,15 @@ export function GroundedQA({
                 query: query.trim(),
                 answer: accumulatedTokens,
                 abstained: capturedSufficiency ? !capturedSufficiency.is_sufficient : false,
-                abstention_reason: capturedSufficiency?.reasoning || null,
+                abstention_reason: capturedSufficiency?.reasoning || undefined,
                 sufficiency: capturedSufficiency || {
                   is_sufficient: true,
                   sufficiency_score: 1.0,
+                  threshold: 0.4,
                   reasoning: "Sufficient evidence",
+                  matched_aspects: [],
                   missing_aspects: [],
                   topic: "Query context",
-                  abstention_message: null,
                 },
                 grounding_report: capturedGrounding || {
                   faithfulness_score: 1.0,
@@ -154,6 +205,10 @@ export function GroundedQA({
         },
         abortController.signal
       );
+      if (activeSessionId) {
+        const details = await fetchSessionDetails(activeSessionId);
+        setConversationTurns(details.turns);
+      }
     } catch (err: unknown) {
       if (!abortController.signal.aborted) {
         setError(err instanceof Error ? err.message : "Failed to execute streaming comparison");
@@ -297,6 +352,20 @@ export function GroundedQA({
       {/* 2. QUERY INPUT & REAL-TIME PROGRESS                                  */}
       {/* ==================================================================== */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-slate-400">Conversation</span>
+            <select value={activeSessionId || ""} onChange={(event) => setActiveSessionId(event.target.value || undefined)} className="max-w-64 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200">
+              {sessions.map((session) => <option key={session.session_id} value={session.session_id}>{session.title} · {session.turn_count} turns</option>)}
+            </select>
+            <button type="button" onClick={startNewConversation} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">New chat</button>
+          </div>
+          <span className="text-[11px] text-slate-500">Relevant past turns can be recalled as external memory.</span>
+        </div>
+        {conversationTurns.length > 0 && <details className="rounded-lg border border-slate-800 bg-slate-950/60">
+          <summary className="cursor-pointer px-3 py-2 text-xs text-slate-300">Conversation history ({conversationTurns.length})</summary>
+          <div className="max-h-72 space-y-3 overflow-y-auto border-t border-slate-800 p-3">{[...conversationTurns].reverse().map((turn) => <article key={turn.memory_id} className="rounded-lg bg-slate-900 p-3"><p className="text-xs font-semibold text-cyan-300">You</p><p className="mt-1 text-sm text-slate-200">{turn.query}</p><p className="mt-3 text-xs font-semibold text-indigo-300">Assistant</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">{turn.answer}</p>{turn.citations.length > 0 && <p className="mt-2 text-[11px] text-slate-500">Citations: {turn.citations.join(", ")}</p>}</article>)}</div>
+        </details>}
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             type="text"

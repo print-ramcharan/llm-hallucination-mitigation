@@ -49,7 +49,9 @@ class GroundedGenerator:
         engine: BaseInferenceEngine | None = None,
         verifier: AntiHallucinationVerifier | None = None,
     ) -> None:
-        self.sufficiency_classifier = sufficiency_classifier or default_sufficiency_classifier
+        self.sufficiency_classifier = (
+            sufficiency_classifier or default_sufficiency_classifier
+        )
         self.prompt_synthesizer = prompt_synthesizer or default_prompt_synthesizer
         self.engine = engine or default_inference_engine
         self.verifier = verifier or default_anti_hallucination_verifier
@@ -71,11 +73,13 @@ class GroundedGenerator:
         start_time = time.perf_counter()
 
         # Step 1: Pre-flight Evidence Sufficiency Evaluation
-        sufficiency: SufficiencyAssessment = self.sufficiency_classifier.assess_sufficiency(
-            query=query,
-            context=context,
-            evidence_items=raw_evidence_chunks,
-            threshold=sufficiency_threshold,
+        sufficiency: SufficiencyAssessment = (
+            self.sufficiency_classifier.assess_sufficiency(
+                query=query,
+                context=context,
+                evidence_items=raw_evidence_chunks,
+                threshold=sufficiency_threshold,
+            )
         )
 
         # Truthful Abstention Protocol
@@ -270,10 +274,14 @@ class GroundedGenerator:
                     max_tokens=1024,
                 )
             except Exception:
-                raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)
+                raw_answer = self._generate_offline_naive(
+                    query=query, document_text=doc_context
+                )
         else:
             # Offline naive baseline: processes the entire un-chunked document text directly
-            raw_answer = self._generate_offline_naive(query=query, document_text=doc_context)
+            raw_answer = self._generate_offline_naive(
+                query=query, document_text=doc_context
+            )
 
         latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return NaiveGenerationResponse(
@@ -303,6 +311,7 @@ class GroundedGenerator:
 
         q_words = set(re.findall(r"\b[a-zA-Z0-9_\-\.]{2,}\b", query.lower()))
         from src.generation.sufficiency import _STOP_WORDS
+
         content_words = {w for w in q_words if w not in _STOP_WORDS}
 
         # Split entire raw document into sentences
@@ -321,7 +330,11 @@ class GroundedGenerator:
                 # Positions in the middle of large contexts suffer from attention attenuation (Lost-in-the-Middle)
                 rel_pos = idx / max(len(raw_sentences), 1)
                 # U-shaped attention curve: head and tail retain attention; middle suffers degradation
-                attention_weight = 1.0 - 0.35 * (1.0 - 4.0 * (rel_pos - 0.5) ** 2) if len(raw_sentences) > 30 else 1.0
+                attention_weight = (
+                    1.0 - 0.35 * (1.0 - 4.0 * (rel_pos - 0.5) ** 2)
+                    if len(raw_sentences) > 30
+                    else 1.0
+                )
                 score = (overlap / (len(content_words) + 1e-5)) * attention_weight
                 scored_sentences.append((score, idx, s_clean))
 

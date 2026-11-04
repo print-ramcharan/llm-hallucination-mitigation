@@ -17,7 +17,9 @@ class ProcessQueryRequest(BaseModel):
     query: str = Field(
         ...,
         description="Raw user query string",
-        json_schema_extra={"example": "What did the 2024 engineering policy say about remote work?"},
+        json_schema_extra={
+            "example": "What did the 2024 engineering policy say about remote work?"
+        },
     )
     conversation_history: list[ConversationTurn] | None = Field(
         default=None,

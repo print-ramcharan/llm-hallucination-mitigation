@@ -65,7 +65,8 @@ class SparseRetriever:
         if not filtered_results and "document_id" in filters:
             doc_chunks = self.metadata_store.get_by_document(filters["document_id"])
             for record in doc_chunks[:top_k]:
-                filtered_results.append((record["chunk_id"], 0.1))
+                if self._matches_filters(record, filters):
+                    filtered_results.append((record["chunk_id"], 0.1))
 
         return filtered_results
 
@@ -84,7 +85,10 @@ class SparseRetriever:
             if isinstance(val, str) and isinstance(target_val, str):
                 if val.strip().lower() != target_val.strip().lower():
                     return False
-            elif val != target_val and str(val).strip().lower() != str(target_val).strip().lower():
+            elif (
+                val != target_val
+                and str(val).strip().lower() != str(target_val).strip().lower()
+            ):
                 return False
 
         return True

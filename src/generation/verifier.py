@@ -8,8 +8,27 @@ from src.context.models import CompactedEvidence, OptimizedContext
 from src.generation.models import ClaimStatus, ClaimVerification, GroundingReport
 
 # Negative/affirmative polarity indicators for contradiction detection
-_NEGATIONS = {"not", "no", "never", "cannot", "can't", "won't", "prohibited", "disallowed", "banned", "restricted"}
-_AFFIRMATIVES = {"allowed", "permitted", "mandatory", "required", "always", "authorized", "eligible"}
+_NEGATIONS = {
+    "not",
+    "no",
+    "never",
+    "cannot",
+    "can't",
+    "won't",
+    "prohibited",
+    "disallowed",
+    "banned",
+    "restricted",
+}
+_AFFIRMATIVES = {
+    "allowed",
+    "permitted",
+    "mandatory",
+    "required",
+    "always",
+    "authorized",
+    "eligible",
+}
 
 
 class AntiHallucinationVerifier:
@@ -58,10 +77,15 @@ class AntiHallucinationVerifier:
 
         claim_tokens = set(re.findall(r"\b[a-zA-Z0-9_\-\.]{2,}\b", clean_claim))
         from src.generation.sufficiency import _STOP_WORDS
+
         content_tokens = {t for t in claim_tokens if t not in _STOP_WORDS}
 
         if not content_tokens:
-            return ClaimStatus.ENTAILED, 0.95, "Claim contains no specific factual assertions."
+            return (
+                ClaimStatus.ENTAILED,
+                0.95,
+                "Claim contains no specific factual assertions.",
+            )
 
         # 1. Contradiction Check: Numeric Discrepancies
         claim_numbers = set(re.findall(r"\b\d+(?:\.\d+)?\b", clean_claim))
@@ -205,7 +229,9 @@ class AntiHallucinationVerifier:
                     break
 
             if supporting_item is not None:
-                ev_text = f"{supporting_item.extracted_text} {supporting_item.original_text}"
+                ev_text = (
+                    f"{supporting_item.extracted_text} {supporting_item.original_text}"
+                )
                 chunk_id = supporting_item.chunk_id
             else:
                 ev_text = full_context_text

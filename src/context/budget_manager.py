@@ -33,7 +33,9 @@ class TokenBudgetManager:
         metadata: dict[str, Any],
     ) -> str:
         """Format an individual evidence section with citation header and source provenance."""
-        source_name = metadata.get("source", metadata.get("source_name", "Unknown Source"))
+        source_name = metadata.get(
+            "source", metadata.get("source_name", "Unknown Source")
+        )
         page = metadata.get("page")
         section = metadata.get("section")
 

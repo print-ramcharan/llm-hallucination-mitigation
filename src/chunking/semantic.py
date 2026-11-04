@@ -77,11 +77,16 @@ class SemanticChunker:
             el_tokens = count_tokens(text)
 
             # If element is huge (e.g. giant paragraph > target_tokens), split it by sentences
-            if el_tokens > self.target_tokens and el.element_type not in ("table", "code"):
+            if el_tokens > self.target_tokens and el.element_type not in (
+                "table",
+                "code",
+            ):
                 sub_sentences = self._split_into_sentences(text)
                 for sentence in sub_sentences:
                     s_tokens = count_tokens(sentence)
-                    if current_token_count > 0 and (current_token_count + s_tokens > self.target_tokens):
+                    if current_token_count > 0 and (
+                        current_token_count + s_tokens > self.target_tokens
+                    ):
                         chunk = self._finalize_chunk(
                             doc_id=doc_id,
                             source_name=source_name,
@@ -101,9 +106,15 @@ class SemanticChunker:
                         previous_overlap_text = get_trailing_token_overlap(
                             chunk.content, self.overlap_tokens
                         )
-                        current_texts = [previous_overlap_text, sentence] if previous_overlap_text else [sentence]
+                        current_texts = (
+                            [previous_overlap_text, sentence]
+                            if previous_overlap_text
+                            else [sentence]
+                        )
                         current_token_count = count_tokens("\n\n".join(current_texts))
-                        current_pages = {el.page_number} if el.page_number is not None else set()
+                        current_pages = (
+                            {el.page_number} if el.page_number is not None else set()
+                        )
                         current_sections = {current_section_title}
                     else:
                         current_texts.append(sentence)
@@ -111,7 +122,9 @@ class SemanticChunker:
                 continue
 
             # Check if adding this element breaches target size
-            if current_token_count > 0 and (current_token_count + el_tokens > self.target_tokens):
+            if current_token_count > 0 and (
+                current_token_count + el_tokens > self.target_tokens
+            ):
                 chunk = self._finalize_chunk(
                     doc_id=doc_id,
                     source_name=source_name,
@@ -131,9 +144,13 @@ class SemanticChunker:
                 previous_overlap_text = get_trailing_token_overlap(
                     chunk.content, self.overlap_tokens
                 )
-                current_texts = [previous_overlap_text, text] if previous_overlap_text else [text]
+                current_texts = (
+                    [previous_overlap_text, text] if previous_overlap_text else [text]
+                )
                 current_token_count = count_tokens("\n\n".join(current_texts))
-                current_pages = {el.page_number} if el.page_number is not None else set()
+                current_pages = (
+                    {el.page_number} if el.page_number is not None else set()
+                )
                 current_sections = {current_section_title}
             else:
                 current_texts.append(text)
@@ -253,7 +270,9 @@ class SemanticChunker:
                 chunks.append(chunk)
                 seq_num += 1
 
-                previous_overlap = get_trailing_token_overlap(content, self.overlap_tokens)
+                previous_overlap = get_trailing_token_overlap(
+                    content, self.overlap_tokens
+                )
                 current_texts = [previous_overlap, p] if previous_overlap else [p]
                 current_tokens = count_tokens("\n\n".join(current_texts))
             else:

@@ -46,7 +46,15 @@ class DocxParser(BaseParser):
         # Extract core properties if available
         try:
             core_props = doc.core_properties
-            for attr in ("author", "title", "subject", "keywords", "created", "modified", "revision"):
+            for attr in (
+                "author",
+                "title",
+                "subject",
+                "keywords",
+                "created",
+                "modified",
+                "revision",
+            ):
                 val = getattr(core_props, attr, None)
                 if val:
                     docx_metadata[attr] = str(val)

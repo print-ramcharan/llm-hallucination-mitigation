@@ -165,7 +165,9 @@ class TestTokenBudgetManager:
             },
         ]
 
-        context, accepted, total_tokens = mgr.fit_within_budget(candidates, max_budget=60)
+        context, accepted, total_tokens = mgr.fit_within_budget(
+            candidates, max_budget=60
+        )
         assert total_tokens <= 60
         assert len(accepted) < len(candidates)
         assert "[Doc 1, Chunk 1]" in context
@@ -182,7 +184,11 @@ class TestContextCompactorIntegration:
                 content="Full-time employees receive 20 days of paid vacation annually. Office chairs are ergonomically designed.",
                 document_id="doc_leave",
                 chunk_index=0,
-                metadata={"source": "leave_policy.pdf", "page": 1, "section": "Vacation"},
+                metadata={
+                    "source": "leave_policy.pdf",
+                    "page": 1,
+                    "section": "Vacation",
+                },
                 rerank_score=0.92,
                 raw_score=4.2,
                 rerank_position=1,
@@ -192,7 +198,11 @@ class TestContextCompactorIntegration:
                 content="Vacation time accrues on a monthly basis starting from day one. Office chairs are ergonomically designed.",
                 document_id="doc_leave",
                 chunk_index=1,
-                metadata={"source": "leave_policy.pdf", "page": 1, "section": "Vacation"},
+                metadata={
+                    "source": "leave_policy.pdf",
+                    "page": 1,
+                    "section": "Vacation",
+                },
                 rerank_score=0.85,
                 raw_score=3.1,
                 rerank_position=2,
@@ -202,7 +212,11 @@ class TestContextCompactorIntegration:
                 content="Sick leave provides up to 10 days of paid medical leave per calendar year.",
                 document_id="doc_sick",
                 chunk_index=0,
-                metadata={"source": "sick_policy.pdf", "page": 2, "section": "Sick Leave"},
+                metadata={
+                    "source": "sick_policy.pdf",
+                    "page": 2,
+                    "section": "Sick Leave",
+                },
                 rerank_score=0.70,
                 raw_score=1.8,
                 rerank_position=3,
@@ -274,9 +288,15 @@ class TestFullContextPipelineWithIndexes:
         from src.retrieval.hybrid import HybridRetriever
 
         hybrid = HybridRetriever(index_manager=manager)
-        retrieval_res = hybrid.retrieve(query="How much vacation leave do staff receive?")
-        ranked_context = default_reranker.rerank_retrieval_response(retrieval_res, top_n=3)
-        optimized_context = default_context_compactor.compact_ranked_context(ranked_context)
+        retrieval_res = hybrid.retrieve(
+            query="How much vacation leave do staff receive?"
+        )
+        ranked_context = default_reranker.rerank_retrieval_response(
+            retrieval_res, top_n=3
+        )
+        optimized_context = default_context_compactor.compact_ranked_context(
+            ranked_context
+        )
 
         assert isinstance(optimized_context, OptimizedContext)
         assert len(optimized_context.evidence_items) >= 1

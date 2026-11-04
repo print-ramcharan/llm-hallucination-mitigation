@@ -66,7 +66,7 @@ class ElementChunker:
                 )
             )
             chunk_idx += 1
-            overlap = current_words[-self.overlap_words:] if self.overlap_words else []
+            overlap = current_words[-self.overlap_words :] if self.overlap_words else []
             current_words = overlap
             current_pages = set()
             current_sections = set()

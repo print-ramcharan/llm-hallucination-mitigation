@@ -58,7 +58,9 @@ class GroundedPromptSynthesizer:
             tag = item.citation_tag
             text = item.extracted_text or item.original_text
             source_meta = item.metadata.get("source", item.document_id)
-            blocks.append(f"--- EVIDENCE {tag} (Source: {source_meta}) ---\n{text.strip()}")
+            blocks.append(
+                f"--- EVIDENCE {tag} (Source: {source_meta}) ---\n{text.strip()}"
+            )
 
         return "\n\n".join(blocks)
 
@@ -85,12 +87,16 @@ class GroundedPromptSynthesizer:
         memory_context: str | None = None,
     ) -> str:
         """Synthesize the complete grounded user prompt."""
-        evidence_block = self.build_evidence_block(context=context, evidence_items=evidence_items)
+        evidence_block = self.build_evidence_block(
+            context=context, evidence_items=evidence_items
+        )
         history_block = self.format_conversation_history(conversation_history)
 
         parts = []
         if memory_context and memory_context.strip():
-            parts.append("RELEVANT PAST MEMORY & USER CONTEXT:\n" + memory_context.strip())
+            parts.append(
+                "RELEVANT PAST MEMORY & USER CONTEXT:\n" + memory_context.strip()
+            )
 
         if history_block:
             parts.append(history_block)

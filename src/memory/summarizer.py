@@ -36,10 +36,22 @@ class HierarchicalSummarizer:
 
             # Regex for potential capitalized entities / proper nouns
             text = f"{m.query} {m.answer}"
-            matches = re.findall(r"\b[A-Z][a-zA-Z0-9_\-\.]{2,}(?:\s+[A-Z][a-zA-Z0-9_\-\.]{2,})*\b", text)
+            matches = re.findall(
+                r"\b[A-Z][a-zA-Z0-9_\-\.]{2,}(?:\s+[A-Z][a-zA-Z0-9_\-\.]{2,})*\b", text
+            )
             for match in matches:
                 # Filter out standard sentence starters
-                if match not in {"What", "How", "Why", "When", "Where", "Which", "Can", "Could", "Should"}:
+                if match not in {
+                    "What",
+                    "How",
+                    "Why",
+                    "When",
+                    "Where",
+                    "Which",
+                    "Can",
+                    "Could",
+                    "Should",
+                }:
                     entities.add(match)
 
         # Return sorted list of unique entities, capped at 15
@@ -74,10 +86,12 @@ class HierarchicalSummarizer:
 
         # Build bulleted interaction summary
         turn_points = []
-        for m in memories[-self.turns_per_summary:]:
+        for m in memories[-self.turns_per_summary :]:
             q_clean = m.query.strip().rstrip("?")
             ans_snippet = m.answer.strip().split(".")[0] if m.answer else "Concluded."
-            turn_points.append(f"- User queried '{q_clean}': Established that {ans_snippet}.")
+            turn_points.append(
+                f"- User queried '{q_clean}': Established that {ans_snippet}."
+            )
 
         summary_body = (
             f"Session '{session.title}' contains {len(memories)} interactions across {len(key_entities)} key entities.\n"

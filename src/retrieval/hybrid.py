@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
+from src.cache import LruTtlCache
 from src.indexing.manager import IndexManager, default_index_manager
 from src.query_processing.models import ConversationTurn
 from src.query_processing.pipeline import QueryProcessor, default_query_processor
@@ -54,6 +56,9 @@ class HybridRetriever:
         self.rrf_engine = rrf_engine or RRFEngine(
             metadata_store=self.index_manager.metadata_store
         )
+        self.result_cache: LruTtlCache[str, RetrievalResponse] = LruTtlCache(
+            max_size=2048, ttl_seconds=90
+        )
 
     def retrieve(
         self,
@@ -80,6 +85,27 @@ class HybridRetriever:
             RetrievalResponse with fused candidates and execution telemetry.
         """
         start_time = time.perf_counter()
+        history_key = [
+            turn.model_dump(mode="json") for turn in (conversation_history or [])
+        ]
+        cache_payload = {
+            "query": " ".join(query.split()).casefold(),
+            "history": history_key,
+            "filters": filters or {},
+            "top_k_dense": top_k_dense,
+            "top_k_sparse": top_k_sparse,
+            "top_k_fused": top_k_fused,
+            "rrf_k": rrf_k,
+            "index_revision": self.index_manager.revision,
+        }
+        cache_key = json.dumps(cache_payload, sort_keys=True, default=str)
+        cached_response = self.result_cache.get(cache_key)
+        if cached_response is not None:
+            cached_response = cached_response.model_copy(deep=True)
+            cached_response.execution_time_ms = round(
+                (time.perf_counter() - start_time) * 1000, 2
+            )
+            return cached_response
 
         # Stage 1: Query Processing Pre-Flight
         processed_query = self.query_processor.process(
@@ -121,7 +147,7 @@ class HybridRetriever:
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
-        return RetrievalResponse(
+        response = RetrievalResponse(
             query=query,
             processed_query=processed_query,
             candidates=candidates,
@@ -130,6 +156,8 @@ class HybridRetriever:
             sparse_count=len(sparse_results),
             execution_time_ms=round(elapsed_ms, 2),
         )
+        self.result_cache.set(cache_key, response.model_copy(deep=True))
+        return response
 
     def retrieve_request(self, request: RetrievalRequest) -> RetrievalResponse:
         """Helper to invoke retrieve using a structured RetrievalRequest model."""

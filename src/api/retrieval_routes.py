@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, status
 
+from src.auth import current_user_id, owner_filters
 from src.retrieval.hybrid import default_hybrid_retriever
 from src.retrieval.models import RetrievalRequest, RetrievalResponse
 
@@ -24,7 +25,15 @@ def retrieve_hybrid(payload: RetrievalRequest) -> RetrievalResponse:
     The query undergoes contextual pre-flight understanding, generates both rank lists,
     and fuses them using Reciprocal Rank Fusion (RRF with k=60).
     """
-    return default_hybrid_retriever.retrieve_request(payload)
+    return default_hybrid_retriever.retrieve(
+        query=payload.query,
+        conversation_history=payload.conversation_history,
+        filters=owner_filters(payload.filters),
+        top_k_dense=payload.top_k_dense,
+        top_k_sparse=payload.top_k_sparse,
+        top_k_fused=payload.top_k_fused,
+        rrf_k=payload.rrf_k,
+    )
 
 
 @router.get(
@@ -33,11 +42,19 @@ def retrieve_hybrid(payload: RetrievalRequest) -> RetrievalResponse:
     summary="Get status and telemetry of hybrid retrieval indexes",
 )
 def get_retrieval_status() -> dict[str, Any]:
-    """Retrieve index sizes and status across FAISS, BM25, and Metadata Store."""
-    stats = default_hybrid_retriever.index_manager.get_stats()
+    """Retrieve retrieval status without disclosing other users' index counts."""
+    owner_id = current_user_id()
+    owner_chunks = [
+        record
+        for record in default_hybrid_retriever.index_manager.metadata_store._store.values()
+        if record.get("metadata", {}).get("owner_id") == owner_id
+    ]
     return {
         "status": "ready",
         "module": "Hybrid Retrieval & RRF",
         "rrf_smoothing_constant_default": 60,
-        "indexes": stats,
+        "indexes": {
+            "owned_chunks": len(owner_chunks),
+            "embedding_model": default_hybrid_retriever.index_manager.embedding_engine.model_name,
+        },
     }

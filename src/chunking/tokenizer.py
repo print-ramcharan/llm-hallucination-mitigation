@@ -8,6 +8,7 @@ import re
 _TIKTOKEN_ENCODER = None
 try:
     import tiktoken
+
     try:
         _TIKTOKEN_ENCODER = tiktoken.get_encoding("cl100k_base")
     except Exception:
@@ -66,7 +67,7 @@ def get_trailing_token_overlap(text: str, overlap_tokens: int = 50) -> str:
     sentence_breaks = list(re.finditer(r"[.!?]\s+", raw_overlap))
     if sentence_breaks:
         first_break = sentence_breaks[0]
-        candidate = raw_overlap[first_break.end():].strip()
+        candidate = raw_overlap[first_break.end() :].strip()
         if count_tokens(candidate) >= int(overlap_tokens * 0.7):
             return candidate
 

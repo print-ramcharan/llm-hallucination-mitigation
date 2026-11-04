@@ -21,10 +21,21 @@ class QueryRewriter:
         r"^(?:do we have\s+(?:a\s+)?(?:policy on|rules for)\s+)",
     ]
 
-    PRONOUNS = {r"\bit\b", r"\bits\b", r"\bthis\b", r"\bthat\b", r"\bthese\b", r"\bthose\b", r"\bthey\b", r"\bthem\b"}
+    PRONOUNS = {
+        r"\bit\b",
+        r"\bits\b",
+        r"\bthis\b",
+        r"\bthat\b",
+        r"\bthese\b",
+        r"\bthose\b",
+        r"\bthey\b",
+        r"\bthem\b",
+    }
 
     def __init__(self) -> None:
-        self._compiled_prefixes = [re.compile(p, re.IGNORECASE) for p in self.CONVERSATIONAL_PREFIXES]
+        self._compiled_prefixes = [
+            re.compile(p, re.IGNORECASE) for p in self.CONVERSATIONAL_PREFIXES
+        ]
 
     def extract_main_subject(self, text: str) -> str | None:
         """Extract dominant topic or subject phrase from a conversational turn."""
@@ -36,7 +47,11 @@ class QueryRewriter:
         cleaned = re.sub(r"[?!.,;:]+$", "", cleaned).strip()
 
         # Check for common policy / topic nouns
-        match = re.search(r"([a-z0-9_\-\s]+(?:policy|handbook|guidelines|process|rules|leave|work|deployment))", cleaned, re.IGNORECASE)
+        match = re.search(
+            r"([a-z0-9_\-\s]+(?:policy|handbook|guidelines|process|rules|leave|work|deployment))",
+            cleaned,
+            re.IGNORECASE,
+        )
         if match:
             return match.group(1).strip()
 
@@ -50,24 +65,37 @@ class QueryRewriter:
             return raw_query
 
         # Find last user question and last assistant response
-        last_user_turn = next((t.content for t in reversed(history) if t.role == "user"), None)
-        last_asst_turn = next((t.content for t in reversed(history) if t.role == "assistant"), None)
+        last_user_turn = next(
+            (t.content for t in reversed(history) if t.role == "user"), None
+        )
+        last_asst_turn = next(
+            (t.content for t in reversed(history) if t.role == "assistant"), None
+        )
 
         subject = None
         if last_user_turn:
             subject = self.extract_main_subject(last_user_turn)
 
         # 1. Ellipsis pattern: "What about <X>?" / "How about <X>?" / "And <X>?"
-        ellipsis_match = re.match(r"^(?:what|how)\s+about\s+(.+?)[?!.,;:]*$", raw_query, re.IGNORECASE)
+        ellipsis_match = re.match(
+            r"^(?:what|how)\s+about\s+(.+?)[?!.,;:]*$", raw_query, re.IGNORECASE
+        )
         if not ellipsis_match:
-            ellipsis_match = re.match(r"^and\s+(?:what\s+about\s+)?(.+?)[?!.,;:]*$", raw_query, re.IGNORECASE)
+            ellipsis_match = re.match(
+                r"^and\s+(?:what\s+about\s+)?(.+?)[?!.,;:]*$", raw_query, re.IGNORECASE
+            )
 
         if ellipsis_match:
             target = ellipsis_match.group(1).strip()
             # If target is e.g. "sick leave" and subject is "leave policy"
             if subject and "leave" in subject.lower() and "leave" in target.lower():
                 # Formulate "What is the employee sick leave policy?"
-                prefix = "employee " if "employee" in (last_user_turn or "").lower() or (last_asst_turn and "employee" in last_asst_turn.lower()) else ""
+                prefix = (
+                    "employee "
+                    if "employee" in (last_user_turn or "").lower()
+                    or (last_asst_turn and "employee" in last_asst_turn.lower())
+                    else ""
+                )
                 return f"What is the {prefix}{target} policy?"
             if subject:
                 # Merge target with context subject

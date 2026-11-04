@@ -143,9 +143,11 @@ class ContextCompactor:
             was_reordered = False
 
         # Stage 4: Token Budget Enforcement & Citation Packaging
-        formatted_context, accepted_items, total_tokens = self.budget_manager.fit_within_budget(
-            evidence_candidates=reordered_candidates,
-            max_budget=max_token_budget,
+        formatted_context, accepted_items, total_tokens = (
+            self.budget_manager.fit_within_budget(
+                evidence_candidates=reordered_candidates,
+                max_budget=max_token_budget,
+            )
         )
 
         # Build CompactedEvidence objects
@@ -180,7 +182,9 @@ class ContextCompactor:
             for pos, item in enumerate(accepted_items, start=1)
         ]
         baseline_context = "\n\n".join(baseline_blocks)
-        original_context_tokens = count_tokens(baseline_context) if baseline_blocks else 0
+        original_context_tokens = (
+            count_tokens(baseline_context) if baseline_blocks else 0
+        )
         saved_tokens = max(0, original_context_tokens - total_tokens)
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 

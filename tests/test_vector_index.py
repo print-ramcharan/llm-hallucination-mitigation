@@ -18,9 +18,21 @@ class TestFaissVectorIndex:
         index = FaissVectorIndex(dimension=384, storage_dir=tmp_path)
 
         chunks = [
-            DocumentChunk(id="c1", document_id="doc1", content="Employee health insurance and medical benefits."),
-            DocumentChunk(id="c2", document_id="doc1", content="Paid time off and annual vacation leave."),
-            DocumentChunk(id="c3", document_id="doc2", content="Python software development guidelines."),
+            DocumentChunk(
+                id="c1",
+                document_id="doc1",
+                content="Employee health insurance and medical benefits.",
+            ),
+            DocumentChunk(
+                id="c2",
+                document_id="doc1",
+                content="Paid time off and annual vacation leave.",
+            ),
+            DocumentChunk(
+                id="c3",
+                document_id="doc2",
+                content="Python software development guidelines.",
+            ),
         ]
         embeddings = engine.embed_chunks(chunks)
         index.add_chunks(chunks, embeddings)
@@ -40,8 +52,14 @@ class TestFaissVectorIndex:
         # 1. Create and populate index
         index1 = FaissVectorIndex(dimension=384, storage_dir=tmp_path)
         chunks = [
-            DocumentChunk(id="chunk_a", document_id="doc_a", content="Machine learning models."),
-            DocumentChunk(id="chunk_b", document_id="doc_b", content="Database indexing techniques."),
+            DocumentChunk(
+                id="chunk_a", document_id="doc_a", content="Machine learning models."
+            ),
+            DocumentChunk(
+                id="chunk_b",
+                document_id="doc_b",
+                content="Database indexing techniques.",
+            ),
         ]
         embeddings = engine.embed_chunks(chunks)
         index1.add_chunks(chunks, embeddings)

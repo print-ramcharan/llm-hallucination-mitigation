@@ -35,7 +35,9 @@ class ParserRegistry:
 
     def register(self, parser: BaseParser) -> None:
         """Register a new parser instance."""
-        self._parsers.insert(0, parser)  # Prepend so newer/specialized parsers take precedence
+        self._parsers.insert(
+            0, parser
+        )  # Prepend so newer/specialized parsers take precedence
 
     @property
     def registered_parsers(self) -> list[BaseParser]:

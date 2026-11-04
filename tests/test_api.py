@@ -41,7 +41,9 @@ def test_upload_txt_file():
 
 
 def test_upload_unsupported_file_returns_415():
-    files = {"file": ("binary_blob.bin", b"\x00\x01\x02\x03", "application/octet-stream")}
+    files = {
+        "file": ("binary_blob.bin", b"\x00\x01\x02\x03", "application/octet-stream")
+    }
     response = client.post("/api/ingest/upload", files=files)
     assert response.status_code == 415
 
@@ -61,8 +63,14 @@ def test_ingest_raw_text():
 
 def test_list_and_get_and_delete_documents():
     # Ingest two items
-    client.post("/api/ingest/text", json={"title": "d1.txt", "content": "Document 1", "format": "txt"})
-    client.post("/api/ingest/text", json={"title": "d2.txt", "content": "Document 2", "format": "txt"})
+    client.post(
+        "/api/ingest/text",
+        json={"title": "d1.txt", "content": "Document 1", "format": "txt"},
+    )
+    client.post(
+        "/api/ingest/text",
+        json={"title": "d2.txt", "content": "Document 2", "format": "txt"},
+    )
 
     # List
     list_res = client.get("/api/ingest/documents")

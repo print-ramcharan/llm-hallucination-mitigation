@@ -272,9 +272,15 @@ class ExternalMemoryStore:
 
         with self._get_connection() as conn:
             conn.execute("DELETE FROM permissions WHERE entity_id = ?", (session_id,))
-            conn.execute("DELETE FROM hierarchical_summaries WHERE session_id = ?", (session_id,))
-            conn.execute("DELETE FROM episodic_memories WHERE session_id = ?", (session_id,))
-            cursor = conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            conn.execute(
+                "DELETE FROM hierarchical_summaries WHERE session_id = ?", (session_id,)
+            )
+            conn.execute(
+                "DELETE FROM episodic_memories WHERE session_id = ?", (session_id,)
+            )
+            cursor = conn.execute(
+                "DELETE FROM sessions WHERE session_id = ?", (session_id,)
+            )
             conn.commit()
             return cursor.rowcount > 0
 
@@ -446,9 +452,16 @@ class ExternalMemoryStore:
         self._save_vector_cache()
 
         with self._get_connection() as conn:
-            conn.execute("DELETE FROM hierarchical_summaries WHERE session_id = ?", (session_id,))
-            cursor = conn.execute("DELETE FROM episodic_memories WHERE session_id = ?", (session_id,))
-            conn.execute("UPDATE sessions SET turn_count = 0, summary = NULL WHERE session_id = ?", (session_id,))
+            conn.execute(
+                "DELETE FROM hierarchical_summaries WHERE session_id = ?", (session_id,)
+            )
+            cursor = conn.execute(
+                "DELETE FROM episodic_memories WHERE session_id = ?", (session_id,)
+            )
+            conn.execute(
+                "UPDATE sessions SET turn_count = 0, summary = NULL WHERE session_id = ?",
+                (session_id,),
+            )
             conn.commit()
             return cursor.rowcount
 
@@ -591,7 +604,9 @@ class ExternalMemoryStore:
                     sim = float(np.dot(query_vec, vec))
                 else:
                     # Token overlap fallback
-                    sim = self._compute_token_overlap(query, item.query + " " + item.answer)
+                    sim = self._compute_token_overlap(
+                        query, item.query + " " + item.answer
+                    )
                 # Scale by importance score
                 effective_score = sim * item.importance_score
                 if effective_score >= min_similarity:
@@ -613,17 +628,21 @@ class ExternalMemoryStore:
         self,
         query: str,
         session_id: str | None = None,
+        user_id: str | None = None,
         top_k: int = 2,
         min_similarity: float = 0.25,
     ) -> tuple[list[HierarchicalSummary], list[float]]:
         """Search persistent summaries matching query semantics."""
         all_summaries = []
         with self._get_connection() as conn:
-            sql = "SELECT * FROM hierarchical_summaries WHERE 1=1"
+            sql = "SELECT hs.* FROM hierarchical_summaries hs JOIN sessions s ON s.session_id=hs.session_id WHERE 1=1"
             params: list[Any] = []
             if session_id:
-                sql += " AND session_id = ?"
+                sql += " AND hs.session_id = ?"
                 params.append(session_id)
+            if user_id:
+                sql += " AND s.user_id = ?"
+                params.append(user_id)
             cursor = conn.execute(sql, params)
             for row in cursor.fetchall():
                 all_summaries.append(
@@ -650,7 +669,9 @@ class ExternalMemoryStore:
                     vec = self._summary_vectors[s.summary_id]
                     sim = float(np.dot(query_vec, vec))
                 else:
-                    sim = self._compute_token_overlap(query, s.title + " " + s.summary_text)
+                    sim = self._compute_token_overlap(
+                        query, s.title + " " + s.summary_text
+                    )
                 if sim >= min_similarity:
                     scored.append((s, sim))
         except Exception:

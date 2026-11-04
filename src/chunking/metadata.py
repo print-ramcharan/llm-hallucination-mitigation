@@ -27,7 +27,16 @@ class MetadataTagger:
             return "doc"
 
         # If contains common domain suffixes like 'handbook', 'manual', 'policy', 'paper'
-        for keyword in ("handbook", "policy", "spec", "report", "paper", "guide", "manual", "contract"):
+        for keyword in (
+            "handbook",
+            "policy",
+            "spec",
+            "report",
+            "paper",
+            "guide",
+            "manual",
+            "contract",
+        ):
             if keyword in parts:
                 return keyword
 
@@ -44,7 +53,9 @@ class MetadataTagger:
     ) -> str:
         """Infer or format document_type (e.g. 'HR_POLICY', 'RESEARCH_PAPER', 'TECHNICAL_SPEC')."""
         if explicit_type and explicit_type.strip():
-            return re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
+            return (
+                re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
+            )
 
         haystack = f"{source_name} {text_sample}".lower()
 
@@ -114,11 +125,23 @@ class MetadataTagger:
             return "LEGAL_CONTRACT"
 
         # User guide / Manual
-        if any(k in haystack for k in ("user guide", "instruction manual", "quickstart", "how to")):
+        if any(
+            k in haystack
+            for k in ("user guide", "instruction manual", "quickstart", "how to")
+        ):
             return "USER_MANUAL"
 
         # Financial
-        if any(k in haystack for k in ("balance sheet", "quarterly earnings", "revenue", "fiscal year", "10-k")):
+        if any(
+            k in haystack
+            for k in (
+                "balance sheet",
+                "quarterly earnings",
+                "revenue",
+                "fiscal year",
+                "10-k",
+            )
+        ):
             return "FINANCIAL_REPORT"
 
         return "GENERAL_DOC"

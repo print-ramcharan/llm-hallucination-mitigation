@@ -4,6 +4,7 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.8.0
 python-multipart>=0.0.9
+python-dotenv>=1.0.0
 
 # Document Ingestion & Parsing
 pymupdf>=1.24.0
@@ -16,6 +17,7 @@ sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
 rank-bm25>=0.2.2
 numpy>=1.25.0
+psutil>=5.9.0
 
 # Testing, Linting & Development Tools
 pytest>=8.0.0

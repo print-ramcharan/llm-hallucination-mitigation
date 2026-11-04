@@ -54,8 +54,14 @@ def test_manager(tmp_path: Path) -> IndexManager:
         source_name="employee_handbook_2024.pdf",
         file_type=DocumentType.PDF,
         elements=hr_elements,
-        extra_metadata={"document_type": "HR_POLICY", "year": "2024", "department": "HR"},
+        extra_metadata={
+            "document_type": "HR_POLICY",
+            "year": "2024",
+            "department": "HR",
+        },
     )
+    for chunk in doc_hr.chunks:
+        chunk.metadata["owner_id"] = "test-user"
     manager.index_document(doc_hr)
 
     # Document 2: Technical Architecture Spec
@@ -79,8 +85,14 @@ def test_manager(tmp_path: Path) -> IndexManager:
         source_name="system_architecture_2024.md",
         file_type=DocumentType.MD,
         elements=tech_elements,
-        extra_metadata={"document_type": "TECHNICAL_SPEC", "year": "2024", "department": "Engineering"},
+        extra_metadata={
+            "document_type": "TECHNICAL_SPEC",
+            "year": "2024",
+            "department": "Engineering",
+        },
     )
+    for chunk in doc_tech.chunks:
+        chunk.metadata["owner_id"] = "test-user"
     manager.index_document(doc_tech)
 
     return manager
@@ -207,7 +219,9 @@ class TestHybridRetrieverIntegration:
     def test_hybrid_retrieval_end_to_end(self, test_manager: IndexManager):
         retriever = HybridRetriever(index_manager=test_manager)
 
-        response = retriever.retrieve("How many vacation leave days do employees receive?")
+        response = retriever.retrieve(
+            "How many vacation leave days do employees receive?"
+        )
         assert isinstance(response, RetrievalResponse)
         assert response.total_candidates > 0
         assert response.dense_count > 0
@@ -218,13 +232,19 @@ class TestHybridRetrieverIntegration:
         assert "20 days" in top_candidate.content
         assert top_candidate.rrf_score > 0.0
 
-    def test_conversational_pronoun_resolution_in_hybrid(self, test_manager: IndexManager):
+    def test_conversational_pronoun_resolution_in_hybrid(
+        self, test_manager: IndexManager
+    ):
         retriever = HybridRetriever(index_manager=test_manager)
 
         # History establishes context as annual vacation leave
         history = [
-            ConversationTurn(role="user", content="Tell me about the vacation leave policy."),
-            ConversationTurn(role="assistant", content="Employees get 20 days of vacation leave."),
+            ConversationTurn(
+                role="user", content="Tell me about the vacation leave policy."
+            ),
+            ConversationTurn(
+                role="assistant", content="Employees get 20 days of vacation leave."
+            ),
         ]
 
         # Follow-up query uses anaphora "it"
@@ -241,7 +261,9 @@ class TestHybridRetrieverIntegration:
     def test_intent_and_filter_extraction_in_hybrid(self, test_manager: IndexManager):
         retriever = HybridRetriever(index_manager=test_manager)
 
-        response = retriever.retrieve("Compare vacation leave vs sick leave in the 2024 policy")
+        response = retriever.retrieve(
+            "Compare vacation leave vs sick leave in the 2024 policy"
+        )
         assert response.processed_query.intent == QueryIntent.COMPARISON
         assert response.processed_query.filters.get("year") == 2024
 
@@ -252,6 +274,7 @@ class TestHybridRetrievalAPI:
     def test_api_hybrid_retrieval(self, test_manager: IndexManager, monkeypatch):
         # Point default_hybrid_retriever to test_manager
         from src.api.retrieval_routes import default_hybrid_retriever
+
         monkeypatch.setattr(default_hybrid_retriever, "index_manager", test_manager)
         monkeypatch.setattr(
             default_hybrid_retriever,

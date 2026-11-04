@@ -44,7 +44,10 @@ class FilterExtractor:
         self.year_pattern = re.compile(r"\b(19\d{2}|20\d{2})\b")
         # Build department regex pattern sorted by length descending so "human resources" matches before "hr"
         sorted_depts = sorted(self.KNOWN_DEPARTMENTS.keys(), key=len, reverse=True)
-        self.dept_pattern = re.compile(r"\b(" + "|".join(re.escape(d) for d in sorted_depts) + r")\b", re.IGNORECASE)
+        self.dept_pattern = re.compile(
+            r"\b(" + "|".join(re.escape(d) for d in sorted_depts) + r")\b",
+            re.IGNORECASE,
+        )
 
     def extract(self, query: str) -> tuple[str, dict[str, Any]]:
         """Extract metadata filters and return (cleaned_search_query, filters)."""
@@ -124,7 +127,12 @@ class FilterExtractor:
         )
 
         # Remove question conversational prefixes
-        q = re.sub(r"^(?:what\s+(?:is|was|are|were)|tell\s+me\s+about|how\s+does|how\s+do)\s+(?:our\s+|the\s+)?", "", q, flags=re.IGNORECASE)
+        q = re.sub(
+            r"^(?:what\s+(?:is|was|are|were)|tell\s+me\s+about|how\s+does|how\s+do)\s+(?:our\s+|the\s+)?",
+            "",
+            q,
+            flags=re.IGNORECASE,
+        )
         q = re.sub(r"^what\s+does\s+the\s+", "", q, flags=re.IGNORECASE)
         q = re.sub(r"\s+say\s+about\s+", " ", q, flags=re.IGNORECASE)
         q = re.sub(r"[?!.,;:]+$", "", q).strip()

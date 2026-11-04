@@ -14,7 +14,9 @@ class CrossEncoderEngine:
     to generate uncalibrated relevance logits.
     """
 
-    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
+    def __init__(
+        self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    ) -> None:
         self._model_name = model_name
         self._model: Any | None = None
 

@@ -35,7 +35,9 @@ class MetadataStore:
             return
 
         for chunk in chunks:
-            chunk_id = chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            chunk_id = (
+                chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            )
             doc_id = chunk.document_id
 
             record = {
@@ -43,7 +45,8 @@ class MetadataStore:
                 "document_id": doc_id,
                 "chunk_index": chunk.chunk_index,
                 "content": chunk.content,
-                "token_count": chunk.token_count or chunk.metadata.get("token_count", 0),
+                "token_count": chunk.token_count
+                or chunk.metadata.get("token_count", 0),
                 "metadata": chunk.metadata,
             }
 

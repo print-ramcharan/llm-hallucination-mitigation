@@ -154,7 +154,9 @@ def test_session_permissions_governance(memory_components):
     assert perms.write_enabled is True
 
     # Disable write permission
-    new_perms = MemoryPermissions(read_enabled=True, write_enabled=False, auto_summarize=False)
+    new_perms = MemoryPermissions(
+        read_enabled=True, write_enabled=False, auto_summarize=False
+    )
     registry.set_permissions(session.session_id, new_perms)
 
     saved_perms = registry.get_permissions(session.session_id)
@@ -517,7 +519,9 @@ def test_api_export_markdown_and_clear():
     )
 
     # Export markdown
-    export_resp = client.get(f"/api/memory/sessions/{session_id}/export?format=markdown")
+    export_resp = client.get(
+        f"/api/memory/sessions/{session_id}/export?format=markdown"
+    )
     assert export_resp.status_code == 200
     assert "# Session Memory Export" in export_resp.text
     assert "What is Python?" in export_resp.text

@@ -18,7 +18,9 @@ class TestTokenizerAndOverlap:
     def test_trailing_token_overlap_extracts_target_tokens(self):
         # Create a paragraph with ~100 tokens
         words = ["word" + str(i) for i in range(100)]
-        long_text = ". ".join(" ".join(words[i:i+10]) for i in range(0, 100, 10)) + "."
+        long_text = (
+            ". ".join(" ".join(words[i : i + 10]) for i in range(0, 100, 10)) + "."
+        )
 
         overlap = get_trailing_token_overlap(long_text, overlap_tokens=50)
         overlap_tokens = count_tokens(overlap)
@@ -50,11 +52,29 @@ class TestMetadataTagger:
         assert meta["created_at"] == today
 
     def test_infer_document_types(self):
-        assert MetadataTagger.infer_document_type("employee_handbook.pdf") == "HR_POLICY"
-        assert MetadataTagger.infer_document_type("research_paper.pdf", "empirical findings and arxiv") == "RESEARCH_PAPER"
-        assert MetadataTagger.infer_document_type("api_spec.json", "endpoint schemas") == "TECHNICAL_SPEC"
-        assert MetadataTagger.infer_document_type("terms_agreement.docx", "confidentiality agreement") == "LEGAL_CONTRACT"
-        assert MetadataTagger.infer_document_type("random_notes.txt", "some text") == "GENERAL_DOC"
+        assert (
+            MetadataTagger.infer_document_type("employee_handbook.pdf") == "HR_POLICY"
+        )
+        assert (
+            MetadataTagger.infer_document_type(
+                "research_paper.pdf", "empirical findings and arxiv"
+            )
+            == "RESEARCH_PAPER"
+        )
+        assert (
+            MetadataTagger.infer_document_type("api_spec.json", "endpoint schemas")
+            == "TECHNICAL_SPEC"
+        )
+        assert (
+            MetadataTagger.infer_document_type(
+                "terms_agreement.docx", "confidentiality agreement"
+            )
+            == "LEGAL_CONTRACT"
+        )
+        assert (
+            MetadataTagger.infer_document_type("random_notes.txt", "some text")
+            == "GENERAL_DOC"
+        )
 
 
 class TestSemanticChunker:
@@ -63,7 +83,13 @@ class TestSemanticChunker:
 
         # Create two distinct sections with enough content to trigger multiple chunks
         elements = [
-            DocumentElement(id="el_0", element_type="heading", content="Leave Policy", section_title="Leave Policy", page_number=12),
+            DocumentElement(
+                id="el_0",
+                element_type="heading",
+                content="Leave Policy",
+                section_title="Leave Policy",
+                page_number=12,
+            ),
             DocumentElement(
                 id="el_1",
                 element_type="paragraph",
@@ -95,7 +121,9 @@ class TestSemanticChunker:
             document_type="HR_POLICY",
         )
 
-        assert len(chunks) >= 2, "Expected multiple chunks for this text length at target_tokens=60"
+        assert len(chunks) >= 2, (
+            "Expected multiple chunks for this text length at target_tokens=60"
+        )
 
         # Check metadata on every chunk
         for chunk in chunks:
@@ -120,9 +148,23 @@ class TestSemanticChunker:
     def test_document_create_end_to_end_cleaning_and_chunking(self):
         """Test full Document creation pipeline with cleaning, chunking, and metadata tagging."""
         elements = [
-            DocumentElement(id="el_0", element_type="paragraph", content="Page 1", page_number=1),  # page number should be cleaned
-            DocumentElement(id="el_1", element_type="heading", content="Context Optimization", section_title="Context Optimization", page_number=1),
-            DocumentElement(id="el_2", element_type="paragraph", content="Mitigating context degra-\ndation is critical.", section_title="Context Optimization", page_number=1),
+            DocumentElement(
+                id="el_0", element_type="paragraph", content="Page 1", page_number=1
+            ),  # page number should be cleaned
+            DocumentElement(
+                id="el_1",
+                element_type="heading",
+                content="Context Optimization",
+                section_title="Context Optimization",
+                page_number=1,
+            ),
+            DocumentElement(
+                id="el_2",
+                element_type="paragraph",
+                content="Mitigating context degra-\ndation is critical.",
+                section_title="Context Optimization",
+                page_number=1,
+            ),
         ]
 
         doc = Document.create(

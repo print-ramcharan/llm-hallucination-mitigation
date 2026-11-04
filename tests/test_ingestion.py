@@ -80,7 +80,10 @@ Multi-stage retrieval improves faithfulness.
         # Check elements
         headings = [el for el in doc.elements if el.element_type == "heading"]
         assert len(headings) >= 3
-        assert any(el.metadata.get("title") == "Introduction to Context Degradation" for el in headings)
+        assert any(
+            el.metadata.get("title") == "Introduction to Context Degradation"
+            for el in headings
+        )
 
         code_blocks = [el for el in doc.elements if el.element_type == "code"]
         assert len(code_blocks) == 1
@@ -145,7 +148,9 @@ class TestDocxParser:
         # Create an in-memory docx file
         doc_obj = docx.Document()
         doc_obj.add_heading("Context Optimization Overview", level=1)
-        doc_obj.add_paragraph("This paragraph outlines RRF and cross-encoder reranking.")
+        doc_obj.add_paragraph(
+            "This paragraph outlines RRF and cross-encoder reranking."
+        )
         table = doc_obj.add_table(rows=2, cols=2)
         table.cell(0, 0).text = "Model"
         table.cell(0, 1).text = "Accuracy"
@@ -172,10 +177,16 @@ class TestPDFParser:
         # Create a simple in-memory 2-page PDF with PyMuPDF
         pdf_doc = fitz.open()
         page1 = pdf_doc.new_page()
-        page1.insert_text((50, 72), "Page 1: Benchmark Dataset Analysis\nGrounding evidence prevents hallucination.")
+        page1.insert_text(
+            (50, 72),
+            "Page 1: Benchmark Dataset Analysis\nGrounding evidence prevents hallucination.",
+        )
 
         page2 = pdf_doc.new_page()
-        page2.insert_text((50, 72), "Page 2: Lost-in-the-Middle Phenomenon\nRecall drops when evidence is placed centrally.")
+        page2.insert_text(
+            (50, 72),
+            "Page 2: Lost-in-the-Middle Phenomenon\nRecall drops when evidence is placed centrally.",
+        )
 
         pdf_bytes = pdf_doc.write()
         pdf_doc.close()

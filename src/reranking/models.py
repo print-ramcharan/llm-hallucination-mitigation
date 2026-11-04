@@ -15,7 +15,9 @@ class RerankedChunk(BaseModel):
     chunk_id: str = Field(..., description="Unique chunk identifier.")
     content: str = Field(..., description="Text content of the chunk.")
     document_id: str = Field(..., description="Parent document identifier.")
-    chunk_index: int = Field(default=0, description="0-indexed position within parent document.")
+    chunk_index: int = Field(
+        default=0, description="0-indexed position within parent document."
+    )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Standardized chunk metadata tags (e.g. source, page, section, doc_type).",
