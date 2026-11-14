@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,16 +15,18 @@ class RerankedChunk(BaseModel):
     chunk_id: str = Field(..., description="Unique chunk identifier.")
     content: str = Field(..., description="Text content of the chunk.")
     document_id: str = Field(..., description="Parent document identifier.")
-    chunk_index: int = Field(default=0, description="0-indexed position within parent document.")
-    metadata: Dict[str, Any] = Field(
+    chunk_index: int = Field(
+        default=0, description="0-indexed position within parent document."
+    )
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Standardized chunk metadata tags (e.g. source, page, section, doc_type).",
     )
-    initial_rank: Optional[int] = Field(
+    initial_rank: int | None = Field(
         default=None,
         description="1-based candidate rank prior to cross-encoder reranking.",
     )
-    initial_score: Optional[float] = Field(
+    initial_score: float | None = Field(
         default=None,
         description="Candidate retrieval score prior to reranking (e.g. RRF score).",
     )
@@ -46,20 +48,20 @@ class RerankingRequest(BaseModel):
     """Payload for submitting candidates to the cross-encoder reranker."""
 
     query: str = Field(..., description="Original user search query.")
-    candidates: List[RetrievedCandidate] = Field(
+    candidates: list[RetrievedCandidate] = Field(
         ...,
         description="Candidate chunks from Module 3 (e.g. Top-20 RRF pool).",
     )
     threshold: float = Field(
-        default=0.35,
+        default=0.15,
         ge=0.0,
         le=1.0,
-        description="Hard cutoff relevance threshold tau; chunks with s < tau are dropped.",
+        description="Relevance cutoff threshold tau for candidate pruning.",
     )
     top_n: int = Field(
-        default=5,
+        default=20,
         ge=1,
-        le=20,
+        le=50,
         description="Maximum number of top-scoring candidates to retain for the context window.",
     )
     normalization: str = Field(
@@ -72,7 +74,7 @@ class RankedContext(BaseModel):
     """Final high-precision prompt context payload after cross-encoder reranking and pruning."""
 
     query: str = Field(..., description="Search query evaluated.")
-    chunks: List[RerankedChunk] = Field(
+    chunks: list[RerankedChunk] = Field(
         default_factory=list,
         description="Top-N retained high-precision chunks ordered descending by rerank score.",
     )

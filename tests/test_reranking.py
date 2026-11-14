@@ -122,8 +122,16 @@ class TestCrossEncoderReranker:
 
     def test_hard_cutoff_threshold_pruning(self, mock_candidates):
         query = "How many days of paid vacation do employees receive annually?"
-        # Set aggressive threshold tau=0.5: irrelevant biology chunk should be pruned
-        result = default_reranker.rerank(
+        class FixedScoreEngine:
+            model_name = "test-cross-encoder"
+
+            def predict(self, pairs):
+                assert len(pairs) == len(mock_candidates)
+                return np.array([2.0, 1.0, -2.0], dtype=np.float32)
+
+        # Fixed logits isolate threshold behavior from model weights and downloads.
+        reranker = CrossEncoderReranker(engine=FixedScoreEngine())
+        result = reranker.rerank(
             query=query,
             candidates=mock_candidates,
             threshold=0.5,
@@ -157,6 +165,37 @@ class TestCrossEncoderReranker:
         assert result.retained_count == 0
         assert result.pruned_count == 0
         assert len(result.chunks) == 0
+
+    def test_cascaded_reranking_prunes_candidate_slice(self, mock_candidates):
+        """Verify that cascaded reranking only cross-encodes top candidates."""
+        # Create pool of 6 candidates (duplicating mock_candidates)
+        many_candidates = mock_candidates + [
+            c.model_copy(update={"chunk_id": f"{c.chunk_id}_copy"}) for c in mock_candidates
+        ]
+        # Evaluate with max_cross_encoder_candidates=2
+        result = default_reranker.rerank(
+            query="vacation leave",
+            candidates=many_candidates,
+            max_cross_encoder_candidates=2,
+            top_n=5,
+        )
+        # Only up to 2 candidates should have been evaluated and retained
+        assert len(result.chunks) <= 2
+
+    def test_score_margin_relative_cutoff(self, mock_candidates):
+        """Verify relative score-margin cutoff prunes candidates dropping far below top candidate."""
+        result = default_reranker.rerank(
+            query="How many days of paid vacation do employees receive annually?",
+            candidates=mock_candidates,
+            threshold=0.0,
+            score_margin=0.6,
+            top_n=5,
+        )
+        assert len(result.chunks) >= 1
+        retained_ids = [c.chunk_id for c in result.chunks]
+        assert "chunk_leave_policy" in retained_ids
+        # Low scoring biology distractor should be pruned by relative score margin
+        assert "chunk_distractor_irrelevant" not in retained_ids
 
 
 class TestEndToEndHybridAndRerankPipeline:
@@ -272,5 +311,5 @@ class TestRerankingAPI:
         assert data["status"] == "ready"
         assert data["module"] == "Deep Cross-Encoder Reranking & Pruning"
         assert "cross-encoder" in data["model_name"]
-        assert data["default_threshold"] == 0.35
-        assert data["default_top_n"] == 5
+        assert data["default_threshold"] == 0.15
+        assert data["default_top_n"] == 20

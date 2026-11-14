@@ -1,6 +1,7 @@
 """Module 3: Hybrid Retrieval & Reciprocal Rank Fusion (RRF) Package."""
 
 from src.retrieval.dense import DenseRetriever
+from src.retrieval.filters import matches_metadata_filters
 from src.retrieval.hybrid import HybridRetriever, default_hybrid_retriever
 from src.retrieval.models import (
     RetrievalRequest,
@@ -19,4 +20,5 @@ __all__ = [
     "RetrievedCandidate",
     "SparseRetriever",
     "default_hybrid_retriever",
+    "matches_metadata_filters",
 ]

@@ -18,7 +18,9 @@ class TestTokenizerAndOverlap:
     def test_trailing_token_overlap_extracts_target_tokens(self):
         # Create a paragraph with ~100 tokens
         words = ["word" + str(i) for i in range(100)]
-        long_text = ". ".join(" ".join(words[i:i+10]) for i in range(0, 100, 10)) + "."
+        long_text = (
+            ". ".join(" ".join(words[i : i + 10]) for i in range(0, 100, 10)) + "."
+        )
 
         overlap = get_trailing_token_overlap(long_text, overlap_tokens=50)
         overlap_tokens = count_tokens(overlap)
@@ -50,11 +52,55 @@ class TestMetadataTagger:
         assert meta["created_at"] == today
 
     def test_infer_document_types(self):
-        assert MetadataTagger.infer_document_type("employee_handbook.pdf") == "HR_POLICY"
-        assert MetadataTagger.infer_document_type("research_paper.pdf", "empirical findings and arxiv") == "RESEARCH_PAPER"
-        assert MetadataTagger.infer_document_type("api_spec.json", "endpoint schemas") == "TECHNICAL_SPEC"
-        assert MetadataTagger.infer_document_type("terms_agreement.docx", "confidentiality agreement") == "LEGAL_CONTRACT"
-        assert MetadataTagger.infer_document_type("random_notes.txt", "some text") == "GENERAL_DOC"
+        assert (
+            MetadataTagger.infer_document_type("employee_handbook.pdf") == "HR_POLICY"
+        )
+        assert (
+            MetadataTagger.infer_document_type(
+                "research_paper.pdf", "empirical findings and arxiv"
+            )
+            == "RESEARCH_PAPER"
+        )
+        assert (
+            MetadataTagger.infer_document_type("api_spec.json", "endpoint schemas")
+            == "TECHNICAL_SPEC"
+        )
+        assert (
+            MetadataTagger.infer_document_type(
+                "terms_agreement.docx", "confidentiality agreement"
+            )
+            == "LEGAL_CONTRACT"
+        )
+        assert (
+            MetadataTagger.infer_document_type("random_notes.txt", "some text")
+            == "GENERAL_DOC"
+        )
+
+    def test_document_chunks_have_distinct_ids_for_same_source_page_and_sequence(self):
+        documents = [
+            Document.create(
+                source_name="employee_handbook.pdf",
+                file_type=DocumentType.PDF,
+                elements=[
+                    DocumentElement(
+                        id="el_0",
+                        element_type="paragraph",
+                        content=content,
+                        section_title="Leave Policy",
+                        page_number=12,
+                    )
+                ],
+            )
+            for content in (
+                "Employees receive 20 days of annual vacation leave.",
+                "Employees receive 25 days of annual vacation leave.",
+            )
+        ]
+
+        chunk_ids = [document.chunks[0].id for document in documents]
+        assert chunk_ids[0].startswith("handbook_12_001_")
+        assert chunk_ids[1].startswith("handbook_12_001_")
+        assert chunk_ids[0] != chunk_ids[1]
 
 
 class TestSemanticChunker:
@@ -63,7 +109,13 @@ class TestSemanticChunker:
 
         # Create two distinct sections with enough content to trigger multiple chunks
         elements = [
-            DocumentElement(id="el_0", element_type="heading", content="Leave Policy", section_title="Leave Policy", page_number=12),
+            DocumentElement(
+                id="el_0",
+                element_type="heading",
+                content="Leave Policy",
+                section_title="Leave Policy",
+                page_number=12,
+            ),
             DocumentElement(
                 id="el_1",
                 element_type="paragraph",
@@ -95,10 +147,12 @@ class TestSemanticChunker:
             document_type="HR_POLICY",
         )
 
-        assert len(chunks) >= 2, "Expected multiple chunks for this text length at target_tokens=60"
+        assert len(chunks) >= 2, (
+            "Expected multiple chunks for this text length at target_tokens=60"
+        )
 
         # Check metadata on every chunk
-        for idx, chunk in enumerate(chunks):
+        for chunk in chunks:
             assert chunk.metadata["source"] == "employee_handbook.pdf"
             assert chunk.metadata["page"] == 12
             assert chunk.metadata["section"] == "Leave Policy"
@@ -120,9 +174,23 @@ class TestSemanticChunker:
     def test_document_create_end_to_end_cleaning_and_chunking(self):
         """Test full Document creation pipeline with cleaning, chunking, and metadata tagging."""
         elements = [
-            DocumentElement(id="el_0", element_type="paragraph", content="Page 1", page_number=1),  # page number should be cleaned
-            DocumentElement(id="el_1", element_type="heading", content="Context Optimization", section_title="Context Optimization", page_number=1),
-            DocumentElement(id="el_2", element_type="paragraph", content="Mitigating context degra-\ndation is critical.", section_title="Context Optimization", page_number=1),
+            DocumentElement(
+                id="el_0", element_type="paragraph", content="Page 1", page_number=1
+            ),  # page number should be cleaned
+            DocumentElement(
+                id="el_1",
+                element_type="heading",
+                content="Context Optimization",
+                section_title="Context Optimization",
+                page_number=1,
+            ),
+            DocumentElement(
+                id="el_2",
+                element_type="paragraph",
+                content="Mitigating context degra-\ndation is critical.",
+                section_title="Context Optimization",
+                page_number=1,
+            ),
         ]
 
         doc = Document.create(
@@ -144,3 +212,126 @@ class TestSemanticChunker:
         assert first_chunk.metadata["document_type"] == "RESEARCH_PAPER"
         assert first_chunk.metadata["source"] == "paper.pdf"
         assert "paper_" in first_chunk.metadata["chunk_id"]
+
+    def test_element_chunker_semantic_compatibility(self):
+        """Verify ElementChunker in src.ingestion uses semantic chunking with boundary awareness."""
+        from src.ingestion.chunker import ElementChunker
+
+        chunker = ElementChunker(target_tokens=60, overlap_tokens=20)
+        elements = [
+            DocumentElement(
+                id="el_0",
+                element_type="paragraph",
+                content="Sentence one regarding architecture design. Sentence two regarding retrieval.",
+                section_title="Architecture",
+                page_number=1,
+            ),
+            DocumentElement(
+                id="el_1",
+                element_type="paragraph",
+                content="Sentence three on indexing. Sentence four on vector databases and search.",
+                section_title="Indexing",
+                page_number=2,
+            ),
+        ]
+        chunks = chunker.chunk_elements(
+            "doc_test", elements, source_name="system_spec.txt"
+        )
+        assert len(chunks) >= 1
+        assert chunks[0].document_id == "doc_test"
+        assert "chunk_id" in chunks[0].metadata
+
+    def test_chunk_plain_text_oversized_paragraph(self):
+        """Verify fallback plain text chunking decomposes long paragraphs exceeding target_tokens."""
+        chunker = SemanticChunker(target_tokens=50, overlap_tokens=15)
+        # 1 long paragraph without double newlines
+        long_paragraph = (
+            "First sentence explains the hybrid retrieval architecture. "
+            "Second sentence details cross-encoder reranking and candidate scoring. "
+            "Third sentence covers extractive context compaction and boundary deduplication. "
+            "Fourth sentence analyzes evidence sufficiency gating and truthful abstention. "
+            "Fifth sentence verifies factual claims with sentence-level NLI guardrails. "
+            "Sixth sentence evaluates memory synchronization across cross-session interactions."
+        )
+        chunks = chunker.chunk_elements(
+            "doc_long", [], raw_text=long_paragraph, source_name="overview.txt"
+        )
+        assert len(chunks) > 1, (
+            "Expected oversized paragraph to be split into multiple chunks"
+        )
+        for chunk in chunks:
+            assert (
+                count_tokens(chunk.content) <= 80
+            )  # Well bounded near target + overlap
+        assert chunks[0].metadata["next_chunk_id"] == chunks[1].id
+        assert chunks[1].metadata["prev_chunk_id"] == chunks[0].id
+
+    def test_semantic_breakpoint_topic_shift(self):
+        """Verify that a sharp topic shift triggers a semantic breakpoint into separate chunks."""
+        chunker = SemanticChunker(
+            target_tokens=300, min_tokens=15, similarity_threshold=0.05
+        )
+        # 2 sentences on vacation leave, followed by 2 sentences on transformer attention architecture
+        elements = [
+            DocumentElement(
+                id="el_0",
+                element_type="paragraph",
+                content=(
+                    "Full-time employees receive 20 days of paid annual vacation leave each calendar year. "
+                    "Vacation requests must be submitted at least two weeks in advance through the HR portal."
+                ),
+            ),
+            DocumentElement(
+                id="el_1",
+                element_type="paragraph",
+                content=(
+                    "The transformer neural network uses multi-head self-attention mechanisms to process sequence data. "
+                    "Positional encodings inject token order information into representation vectors."
+                ),
+            ),
+        ]
+        chunks = chunker.chunk_elements(
+            "doc_shift", elements, source_name="multi_topic.txt"
+        )
+        assert len(chunks) >= 2, (
+            "Expected topic shift to trigger semantic chunk boundary"
+        )
+        assert "vacation" in chunks[0].content.lower()
+        assert "transformer" in chunks[1].content.lower()
+        assert chunks[0].metadata["next_chunk_id"] == chunks[1].id
+        assert chunks[1].metadata["prev_chunk_id"] == chunks[0].id
+
+    def test_protected_abbreviations_and_decimals(self):
+        """Verify sentence splitting protects abbreviations and decimal numbers."""
+        chunker = SemanticChunker()
+        text = "Dr. Smith evaluated e.g. the model with 98.5% precision at 10.5 AM. What were the results? They were excellent."
+        sentences = chunker._split_into_sentences(text)
+        assert len(sentences) == 3
+        assert (
+            "Dr. Smith evaluated e.g. the model with 98.5% precision at 10.5 AM."
+            in sentences[0]
+        )
+        assert "What were the results?" in sentences[1]
+        assert "They were excellent." in sentences[2]
+
+    def test_auto_metadata_tagging_year_and_dept(self):
+        """Verify automatic extraction of year and department during chunking."""
+        chunker = SemanticChunker()
+        elements = [
+            DocumentElement(
+                id="el_0",
+                element_type="paragraph",
+                content="Engineering guidelines for production microservice deployments.",
+                section_title="Deployment Guide",
+            )
+        ]
+        chunks = chunker.chunk_elements(
+            "doc_meta_test",
+            elements,
+            source_name="engineering_deployment_guide_2025.pdf",
+        )
+        assert len(chunks) == 1
+        meta = chunks[0].metadata
+        assert meta["year"] == 2025
+        assert meta["department"] == "engineering"
+        assert meta["section"] == "Deployment Guide"

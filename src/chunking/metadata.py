@@ -2,16 +2,55 @@
 
 from __future__ import annotations
 
+import functools
+import hashlib
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+_CLEAN_WORDS_REGEX = re.compile(r"[\W_]+")
+_YEAR_REGEX = re.compile(r"\b(19\d{2}|20\d{2})\b")
+_TABLE_PIPE_REGEX = re.compile(r"\|.*\|")
+
+_DEPT_MAPPINGS = (
+    ("engineering", "engineering"),
+    ("tech", "engineering"),
+    ("software", "engineering"),
+    ("human resources", "hr"),
+    ("hr", "hr"),
+    ("finance", "finance"),
+    ("accounting", "finance"),
+    ("marketing", "marketing"),
+    ("legal", "legal"),
+    ("operations", "operations"),
+    ("ops", "operations"),
+    ("sales", "sales"),
+    ("product", "product"),
+    ("security", "security"),
+    ("it", "it"),
+)
+
+
+@functools.lru_cache(maxsize=256)
+def _extract_source_metadata(source_name: str) -> tuple[int | None, str | None]:
+    clean_source = _CLEAN_WORDS_REGEX.sub(" ", source_name)
+    year_match = _YEAR_REGEX.search(clean_source)
+    year = int(year_match.group(1)) if year_match else None
+    dept = None
+    clean_source_lower = clean_source.lower()
+    for dept_raw, dept_std in _DEPT_MAPPINGS:
+        if re.search(rf"\b{re.escape(dept_raw)}\b", clean_source_lower):
+            dept = dept_std
+            break
+    return year, dept
 
 
 class MetadataTagger:
     """Tags document chunks with standardized metadata schemas and provenance."""
 
     @staticmethod
+    @functools.lru_cache(maxsize=256)
     def extract_source_slug(source_name: str) -> str:
         """Derive a clean, human-readable slug for chunk ID generation.
 
@@ -27,7 +66,16 @@ class MetadataTagger:
             return "doc"
 
         # If contains common domain suffixes like 'handbook', 'manual', 'policy', 'paper'
-        for keyword in ("handbook", "policy", "spec", "report", "paper", "guide", "manual", "contract"):
+        for keyword in (
+            "handbook",
+            "policy",
+            "spec",
+            "report",
+            "paper",
+            "guide",
+            "manual",
+            "contract",
+        ):
             if keyword in parts:
                 return keyword
 
@@ -44,9 +92,9 @@ class MetadataTagger:
     ) -> str:
         """Infer or format document_type (e.g. 'HR_POLICY', 'RESEARCH_PAPER', 'TECHNICAL_SPEC')."""
         if explicit_type and explicit_type.strip():
-            # Format explicit type as UPPER_SNAKE_CASE
-            formatted = re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
-            return formatted
+            return (
+                re.sub(r"[^a-zA-Z0-9]+", "_", explicit_type.strip()).upper().strip("_")
+            )
 
         haystack = f"{source_name} {text_sample}".lower()
 
@@ -116,11 +164,23 @@ class MetadataTagger:
             return "LEGAL_CONTRACT"
 
         # User guide / Manual
-        if any(k in haystack for k in ("user guide", "instruction manual", "quickstart", "how to")):
+        if any(
+            k in haystack
+            for k in ("user guide", "instruction manual", "quickstart", "how to")
+        ):
             return "USER_MANUAL"
 
         # Financial
-        if any(k in haystack for k in ("balance sheet", "quarterly earnings", "revenue", "fiscal year", "10-k")):
+        if any(
+            k in haystack
+            for k in (
+                "balance sheet",
+                "quarterly earnings",
+                "revenue",
+                "fiscal year",
+                "10-k",
+            )
+        ):
             return "FINANCIAL_REPORT"
 
         return "GENERAL_DOC"
@@ -132,6 +192,7 @@ class MetadataTagger:
         page: int | None,
         section: str | None,
         sequence_num: int,
+        document_id: str | None = None,
     ) -> str:
         """Generate a clean semantic chunk ID adhering to the format: {slug}_{page}_{seq:03d}.
 
@@ -139,7 +200,13 @@ class MetadataTagger:
         """
         slug = cls.extract_source_slug(source_name)
         page_part = str(page) if page is not None else "0"
-        return f"{slug}_{page_part}_{sequence_num:03d}"
+        chunk_id = f"{slug}_{page_part}_{sequence_num:03d}"
+        if document_id:
+            document_suffix = hashlib.sha256(document_id.encode("utf-8")).hexdigest()[
+                :16
+            ]
+            chunk_id = f"{chunk_id}_{document_suffix}"
+        return chunk_id
 
     @classmethod
     def build_chunk_metadata(
@@ -153,6 +220,7 @@ class MetadataTagger:
         token_count: int,
         overlap_token_count: int = 0,
         extra: dict[str, Any] | None = None,
+        document_id: str | None = None,
     ) -> dict[str, Any]:
         """Construct the standardized metadata payload for a chunk.
 
@@ -166,7 +234,9 @@ class MetadataTagger:
           "created_at": "2026-09-19"
         }
         """
-        chunk_id = cls.generate_chunk_id(source_name, page, section, sequence_num)
+        chunk_id = cls.generate_chunk_id(
+            source_name, page, section, sequence_num, document_id=document_id
+        )
         created_at_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         meta: dict[str, Any] = {
@@ -181,13 +251,31 @@ class MetadataTagger:
             "char_count": len(content),
             "word_count": len(content.split()),
             "overlap_token_count": overlap_token_count,
-            "has_table": "|" in content and re.search(r"\|.*\|", content) is not None,
+            "has_table": "|" in content and _TABLE_PIPE_REGEX.search(content) is not None,
             "has_code": "```" in content,
         }
 
+        # Auto-extract year & department (leveraging cached source metadata)
+        source_year, source_dept = _extract_source_metadata(source_name)
+        if source_year is not None:
+            meta["year"] = source_year
+        elif content:
+            clean_content = _CLEAN_WORDS_REGEX.sub(" ", content[:300])
+            year_match = _YEAR_REGEX.search(clean_content)
+            if year_match:
+                meta["year"] = int(year_match.group(1))
+
+        if source_dept is not None:
+            meta["department"] = source_dept
+        elif section:
+            sec_lower = _CLEAN_WORDS_REGEX.sub(" ", section.lower())
+            for dept_raw, dept_std in _DEPT_MAPPINGS:
+                if re.search(rf"\b{re.escape(dept_raw)}\b", sec_lower):
+                    meta["department"] = dept_std
+                    break
+
         if extra:
             for k, v in extra.items():
-                if k not in meta:
-                    meta[k] = v
+                meta[k] = v
 
         return meta

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
@@ -20,36 +20,36 @@ class FullContextPipelineRequest(BaseModel):
     """Payload executing the full chain: Hybrid Retrieval -> Reranking -> Context Compaction."""
 
     query: str = Field(..., description="User search query string.")
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Optional interactive chat history turns.",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Optional structured metadata filters.",
     )
     top_k_fused: int = Field(
-        default=20,
+        default=50,
         ge=1,
-        le=50,
+        le=100,
         description="Candidate pool size to retrieve from Module 3 hybrid retrieval.",
     )
     rerank_threshold: float = Field(
-        default=0.35,
+        default=0.15,
         ge=0.0,
         le=1.0,
         description="Cutoff threshold tau for Module 4 cross-encoder reranking.",
     )
     rerank_top_n: int = Field(
-        default=5,
+        default=20,
         ge=1,
-        le=20,
+        le=50,
         description="Maximum candidates retained after Module 4 reranking.",
     )
     max_token_budget: int = Field(
-        default=1500,
+        default=4000,
         ge=100,
-        le=8000,
+        le=16000,
         description="Target maximum token allowance for final prompt context.",
     )
     enable_sentence_pruning: bool = Field(
@@ -119,7 +119,7 @@ def run_full_context_pipeline(payload: FullContextPipelineRequest) -> OptimizedC
     status_code=status.HTTP_200_OK,
     summary="Get status and configurations of the context optimization engine",
 )
-def get_context_status() -> Dict[str, Any]:
+def get_context_status() -> dict[str, Any]:
     """Retrieve default token allowances, salience cutoffs, and component statuses."""
     return {
         "status": "ready",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
@@ -19,30 +19,30 @@ class HybridAndRerankRequest(BaseModel):
     """Payload for executing end-to-end hybrid retrieval followed by cross-encoder reranking."""
 
     query: str = Field(..., description="User search query string.")
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Optional interactive conversation history for coreference and ellipsis resolution.",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Optional structured metadata filters.",
     )
     top_k_fused: int = Field(
-        default=20,
+        default=50,
         ge=1,
-        le=50,
+        le=100,
         description="Candidate pool size to retrieve from Module 3 hybrid fusion before reranking.",
     )
     threshold: float = Field(
-        default=0.35,
+        default=0.15,
         ge=0.0,
         le=1.0,
-        description="Hard cutoff relevance threshold tau for candidate pruning.",
+        description="Relevance cutoff threshold tau for candidate pruning.",
     )
     top_n: int = Field(
-        default=5,
+        default=20,
         ge=1,
-        le=20,
+        le=50,
         description="Maximum number of top-precision chunks to retain for the prompt context.",
     )
 
@@ -87,7 +87,7 @@ def hybrid_retrieve_and_rerank(payload: HybridAndRerankRequest) -> RankedContext
     status_code=status.HTTP_200_OK,
     summary="Get cross-encoder model status and pruning parameters",
 )
-def get_reranker_status() -> Dict[str, Any]:
+def get_reranker_status() -> dict[str, Any]:
     """Retrieve status, model identifier, and default threshold configurations."""
     return {
         "status": "ready",

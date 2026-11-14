@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -20,7 +20,7 @@ class LostInTheMiddleReorderer:
     """
 
     @staticmethod
-    def reorder(items: List[T]) -> List[T]:
+    def reorder(items: list[T]) -> list[T]:
         """Reorder ranked items into a U-shaped attention distribution.
 
         Args:
@@ -33,7 +33,7 @@ class LostInTheMiddleReorderer:
         if n <= 2:
             return list(items)
 
-        reordered: List[T] = [None] * n  # type: ignore
+        reordered: list[T] = [None] * n  # type: ignore
         left = 0
         right = n - 1
 

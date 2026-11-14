@@ -30,15 +30,22 @@ class TestQueryRewriter:
     def test_conversational_ellipsis_rewriting(self, rewriter):
         history = [
             ConversationTurn(role="user", content="What is the leave policy?"),
-            ConversationTurn(role="assistant", content="Employees receive 20 days of annual leave."),
+            ConversationTurn(
+                role="assistant", content="Employees receive 20 days of annual leave."
+            ),
         ]
         rewritten = rewriter.rewrite("What about sick leave?", history)
         assert rewritten == "What is the employee sick leave policy?"
 
     def test_pronoun_resolution(self, rewriter):
         history = [
-            ConversationTurn(role="user", content="Tell me about the travel expense policy"),
-            ConversationTurn(role="assistant", content="Travel expenses must be submitted within 30 days."),
+            ConversationTurn(
+                role="user", content="Tell me about the travel expense policy"
+            ),
+            ConversationTurn(
+                role="assistant",
+                content="Travel expenses must be submitted within 30 days.",
+            ),
         ]
         rewritten = rewriter.rewrite("Does it cover international flights?", history)
         assert "travel expense policy" in rewritten.lower()
@@ -50,23 +57,47 @@ class TestIntentDetector:
         return IntentDetector()
 
     def test_informational_intent(self, detector):
-        assert detector.detect("What is our remote working policy?") == QueryIntent.INFORMATIONAL
+        assert (
+            detector.detect("What is our remote working policy?")
+            == QueryIntent.INFORMATIONAL
+        )
         assert detector.detect("What is the leave policy?") == QueryIntent.INFORMATIONAL
 
     def test_comparison_intent(self, detector):
-        assert detector.detect("Compare our leave policy with remote work policy") == QueryIntent.COMPARISON
-        assert detector.detect("What is the difference between casual and sick leave?") == QueryIntent.COMPARISON
-        assert detector.detect("Hybrid vs full remote requirements") == QueryIntent.COMPARISON
+        assert (
+            detector.detect("Compare our leave policy with remote work policy")
+            == QueryIntent.COMPARISON
+        )
+        assert (
+            detector.detect("What is the difference between casual and sick leave?")
+            == QueryIntent.COMPARISON
+        )
+        assert (
+            detector.detect("Hybrid vs full remote requirements")
+            == QueryIntent.COMPARISON
+        )
 
     def test_summary_intent(self, detector):
         assert detector.detect("Summarize the employee handbook") == QueryIntent.SUMMARY
-        assert detector.detect("Give me a brief overview of the code of conduct") == QueryIntent.SUMMARY
+        assert (
+            detector.detect("Give me a brief overview of the code of conduct")
+            == QueryIntent.SUMMARY
+        )
         assert detector.detect("TL;DR on retirement benefits") == QueryIntent.SUMMARY
 
     def test_exploratory_intent(self, detector):
-        assert detector.detect("What topics are covered in the guidelines?") == QueryIntent.EXPLORATORY
-        assert detector.detect("What policies do we have for new parents?") == QueryIntent.EXPLORATORY
-        assert detector.detect("Explore the security architecture documentation") == QueryIntent.EXPLORATORY
+        assert (
+            detector.detect("What topics are covered in the guidelines?")
+            == QueryIntent.EXPLORATORY
+        )
+        assert (
+            detector.detect("What policies do we have for new parents?")
+            == QueryIntent.EXPLORATORY
+        )
+        assert (
+            detector.detect("Explore the security architecture documentation")
+            == QueryIntent.EXPLORATORY
+        )
 
     def test_keyword_lookup(self, detector):
         assert detector.detect("leave policy") == QueryIntent.KEYWORD_LOOKUP
@@ -83,12 +114,16 @@ class TestFilterExtractor:
         assert query == "leave policy"
 
     def test_department_extraction(self, extractor):
-        query, filters = extractor.extract("What does the engineering handbook say about deployment?")
+        query, filters = extractor.extract(
+            "What does the engineering handbook say about deployment?"
+        )
         assert filters == {"department": "engineering"}
         assert query == "deployment"
 
     def test_both_year_and_department(self, extractor):
-        query, filters = extractor.extract("What did the 2024 engineering policy say about remote work?")
+        query, filters = extractor.extract(
+            "What did the 2024 engineering policy say about remote work?"
+        )
         assert filters == {"year": 2024, "department": "engineering"}
         assert query == "engineering remote work policy"
 
@@ -120,9 +155,13 @@ class TestQueryProcessorPipeline:
     def test_full_conversational_workflow(self, processor):
         history = [
             ConversationTurn(role="user", content="What is the leave policy?"),
-            ConversationTurn(role="assistant", content="Employees receive 20 days off annually."),
+            ConversationTurn(
+                role="assistant", content="Employees receive 20 days off annually."
+            ),
         ]
-        result = processor.process("What about sick leave?", conversation_history=history)
+        result = processor.process(
+            "What about sick leave?", conversation_history=history
+        )
 
         assert result.is_conversational is True
         assert result.rewritten_query == "What is the employee sick leave policy?"
@@ -141,7 +180,10 @@ class TestQueryProcessingAPI:
         assert data["query"] == "engineering remote work policy"
         assert data["filters"] == {"year": 2024, "department": "engineering"}
         assert data["intent"] == "informational"
-        assert data["rewritten_query"] == "What did the 2024 engineering policy say about remote work?"
+        assert (
+            data["rewritten_query"]
+            == "What did the 2024 engineering policy say about remote work?"
+        )
 
     def test_api_conversational_query(self):
         payload = {

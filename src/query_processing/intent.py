@@ -33,9 +33,15 @@ class IntentDetector:
     ]
 
     def __init__(self) -> None:
-        self._compiled_comparison = [re.compile(p, re.IGNORECASE) for p in self.COMPARISON_PATTERNS]
-        self._compiled_summary = [re.compile(p, re.IGNORECASE) for p in self.SUMMARY_PATTERNS]
-        self._compiled_exploratory = [re.compile(p, re.IGNORECASE) for p in self.EXPLORATORY_PATTERNS]
+        self._compiled_comparison = [
+            re.compile(p, re.IGNORECASE) for p in self.COMPARISON_PATTERNS
+        ]
+        self._compiled_summary = [
+            re.compile(p, re.IGNORECASE) for p in self.SUMMARY_PATTERNS
+        ]
+        self._compiled_exploratory = [
+            re.compile(p, re.IGNORECASE) for p in self.EXPLORATORY_PATTERNS
+        ]
 
     def detect(self, query: str) -> QueryIntent:
         """Detect intent from the query string."""
@@ -57,7 +63,21 @@ class IntentDetector:
 
         # 4. Keyword lookup check (few words, no question starter or punctuation)
         words = q.split()
-        is_question = any(q.lower().startswith(w) for w in ["what", "how", "when", "where", "why", "who", "which", "can", "is", "are"])
+        is_question = any(
+            q.lower().startswith(w)
+            for w in [
+                "what",
+                "how",
+                "when",
+                "where",
+                "why",
+                "who",
+                "which",
+                "can",
+                "is",
+                "are",
+            ]
+        )
         if len(words) <= 3 and not is_question and not q.endswith("?"):
             return QueryIntent.KEYWORD_LOOKUP
 

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "LLM Context Memory Sync",
+  "version": "1.0.0",
+  "description": "Capture web context and sync cross-session episodic memory with the Grounded QA Pipeline.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LLM Context Memory Sync"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

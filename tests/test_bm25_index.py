@@ -19,9 +19,21 @@ class TestBM25Index:
         index = BM25Index(storage_dir=tmp_path)
 
         chunks = [
-            DocumentChunk(id="c1", document_id="doc1", content="Comprehensive parental leave policy for employees."),
-            DocumentChunk(id="c2", document_id="doc1", content="Salary review and quarterly performance bonuses."),
-            DocumentChunk(id="c3", document_id="doc2", content="API authentication using Bearer tokens."),
+            DocumentChunk(
+                id="c1",
+                document_id="doc1",
+                content="Comprehensive parental leave policy for employees.",
+            ),
+            DocumentChunk(
+                id="c2",
+                document_id="doc1",
+                content="Salary review and quarterly performance bonuses.",
+            ),
+            DocumentChunk(
+                id="c3",
+                document_id="doc2",
+                content="API authentication using Bearer tokens.",
+            ),
         ]
         index.add_chunks(chunks)
 
@@ -37,8 +49,14 @@ class TestBM25Index:
     def test_persistence_and_reload(self, tmp_path: Path):
         index1 = BM25Index(storage_dir=tmp_path)
         chunks = [
-            DocumentChunk(id="c1", document_id="doc1", content="TensorFlow neural network training."),
-            DocumentChunk(id="c2", document_id="doc2", content="Kubernetes cluster orchestration."),
+            DocumentChunk(
+                id="c1",
+                document_id="doc1",
+                content="TensorFlow neural network training.",
+            ),
+            DocumentChunk(
+                id="c2", document_id="doc2", content="Kubernetes cluster orchestration."
+            ),
         ]
         index1.add_chunks(chunks)
         assert index1.total_documents == 2
@@ -54,8 +72,12 @@ class TestBM25Index:
     def test_remove_document(self, tmp_path: Path):
         index = BM25Index(storage_dir=tmp_path)
         chunks = [
-            DocumentChunk(id="c1", document_id="doc1", content="Doc1 unique keyword alpha"),
-            DocumentChunk(id="c2", document_id="doc2", content="Doc2 unique keyword beta"),
+            DocumentChunk(
+                id="c1", document_id="doc1", content="Doc1 unique keyword alpha"
+            ),
+            DocumentChunk(
+                id="c2", document_id="doc2", content="Doc2 unique keyword beta"
+            ),
         ]
         index.add_chunks(chunks)
         assert index.total_documents == 2

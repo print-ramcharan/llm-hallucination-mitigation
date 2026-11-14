@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
 
@@ -19,9 +17,11 @@ class ProcessQueryRequest(BaseModel):
     query: str = Field(
         ...,
         description="Raw user query string",
-        json_schema_extra={"example": "What did the 2024 engineering policy say about remote work?"},
+        json_schema_extra={
+            "example": "What did the 2024 engineering policy say about remote work?"
+        },
     )
-    conversation_history: Optional[List[ConversationTurn]] = Field(
+    conversation_history: list[ConversationTurn] | None = Field(
         default=None,
         description="Optional list of prior conversation turns for coreference and ellipsis resolution",
     )

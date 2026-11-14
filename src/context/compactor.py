@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from src.chunking.tokenizer import count_tokens
 from src.context.budget_manager import TokenBudgetManager
@@ -30,10 +30,10 @@ class ContextCompactor:
 
     def __init__(
         self,
-        sentence_pruner: Optional[SentencePruner] = None,
-        deduplicator: Optional[ContextDeduplicator] = None,
-        reorderer: Optional[LostInTheMiddleReorderer] = None,
-        budget_manager: Optional[TokenBudgetManager] = None,
+        sentence_pruner: SentencePruner | None = None,
+        deduplicator: ContextDeduplicator | None = None,
+        reorderer: LostInTheMiddleReorderer | None = None,
+        budget_manager: TokenBudgetManager | None = None,
     ) -> None:
         self.sentence_pruner = sentence_pruner or SentencePruner()
         self.deduplicator = deduplicator or ContextDeduplicator()
@@ -43,13 +43,14 @@ class ContextCompactor:
     def compact(
         self,
         query: str,
-        chunks: List[RerankedChunk],
-        max_token_budget: int = 1500,
+        chunks: list[RerankedChunk],
+        max_token_budget: int = 4000,
         enable_sentence_pruning: bool = True,
         enable_deduplication: bool = True,
         enable_lost_in_middle_reordering: bool = True,
         dedup_similarity_threshold: float = 0.75,
         min_sentence_salience: float = 0.15,
+        intent: str | None = None,
     ) -> OptimizedContext:
         """Execute complete extractive compaction, deduplication, and U-shaped prompt packaging.
 
@@ -62,11 +63,15 @@ class ContextCompactor:
             enable_lost_in_middle_reordering: Whether to apply U-shaped reordering.
             dedup_similarity_threshold: Jaccard overlap cutoff for duplicate sentences.
             min_sentence_salience: Minimum salience required to retain an extracted sentence.
+            intent: Optional query intent (e.g. FACTUAL, COMPARISON, SUMMARY) for adaptive sizing.
 
         Returns:
             OptimizedContext ready for LLM prompt injection with explicit citation tags.
         """
         start_time = time.perf_counter()
+        effective_budget = self.budget_manager.get_adaptive_budget(
+            intent, max_token_budget
+        )
 
         if not chunks:
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -77,16 +82,17 @@ class ContextCompactor:
                 total_tokens=0,
                 original_tokens=0,
                 saved_tokens=0,
-                token_budget=max_token_budget,
+                token_budget=effective_budget,
                 dedup_pruned_count=0,
                 reordered=False,
                 execution_time_ms=round(elapsed_ms, 2),
             )
 
-        seen_sentence_terms: List[Set[str]] = []
+        seen_sentence_terms: list[set[str]] = []
         dedup_pruned_total = 0
 
-        compacted_candidates: List[Dict[str, Any]] = []
+        compacted_candidates: list[dict[str, Any]] = []
+        prev_chunk_by_doc: dict[str, str] = {}
 
         # Stage 1 & 2: Sentence-Level Pruning and Overlap Deduplication per chunk
         for chunk in chunks:
@@ -115,6 +121,16 @@ class ContextCompactor:
 
             # Reconstruct compacted text
             extracted_text = " ".join(unique_sentences).strip()
+
+            # Dedicated seam overlap stripping if chunk is from the same document
+            doc_id = chunk.document_id
+            if enable_deduplication and doc_id in prev_chunk_by_doc:
+                prior_text = prev_chunk_by_doc[doc_id]
+                extracted_text = self.deduplicator.strip_seam_overlap(
+                    prior_text, extracted_text
+                )
+            prev_chunk_by_doc[doc_id] = orig_text
+
             if not extracted_text:
                 continue
 
@@ -143,13 +159,15 @@ class ContextCompactor:
             was_reordered = False
 
         # Stage 4: Token Budget Enforcement & Citation Packaging
-        formatted_context, accepted_items, total_tokens = self.budget_manager.fit_within_budget(
-            evidence_candidates=reordered_candidates,
-            max_budget=max_token_budget,
+        formatted_context, accepted_items, total_tokens = (
+            self.budget_manager.fit_within_budget(
+                evidence_candidates=reordered_candidates,
+                max_budget=effective_budget,
+            )
         )
 
         # Build CompactedEvidence objects
-        evidence_items: List[CompactedEvidence] = []
+        evidence_items: list[CompactedEvidence] = []
         for pos, item in enumerate(accepted_items, start=1):
             orig_t = item["original_token_count"]
             curr_t = item["token_count"]
@@ -180,7 +198,9 @@ class ContextCompactor:
             for pos, item in enumerate(accepted_items, start=1)
         ]
         baseline_context = "\n\n".join(baseline_blocks)
-        original_context_tokens = count_tokens(baseline_context) if baseline_blocks else 0
+        original_context_tokens = (
+            count_tokens(baseline_context) if baseline_blocks else 0
+        )
         saved_tokens = max(0, original_context_tokens - total_tokens)
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
@@ -191,7 +211,7 @@ class ContextCompactor:
             total_tokens=total_tokens,
             original_tokens=original_context_tokens,
             saved_tokens=saved_tokens,
-            token_budget=max_token_budget,
+            token_budget=effective_budget,
             dedup_pruned_count=dedup_pruned_total,
             reordered=was_reordered,
             execution_time_ms=round(elapsed_ms, 2),
@@ -208,12 +228,13 @@ class ContextCompactor:
             enable_lost_in_middle_reordering=request.enable_lost_in_middle_reordering,
             dedup_similarity_threshold=request.dedup_similarity_threshold,
             min_sentence_salience=request.min_sentence_salience,
+            intent=request.intent,
         )
 
     def compact_ranked_context(
         self,
         ranked_context: RankedContext,
-        max_token_budget: int = 1500,
+        max_token_budget: int = 4000,
         enable_sentence_pruning: bool = True,
         enable_deduplication: bool = True,
         enable_lost_in_middle_reordering: bool = True,

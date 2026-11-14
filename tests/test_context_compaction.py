@@ -57,6 +57,49 @@ class TestSentencePruner:
         assert len(kept) == 1
         assert len(compacted) > 0
 
+    def test_enumerated_list_preservation(self):
+        """Verify that all items in an enumerated list are preserved when relevant."""
+        pruner = SentencePruner(default_min_salience=0.15)
+        query = "What are the fundamental questions that are to be considered about the system regarding architectural design decisions"
+        text = (
+            "Architectural design decisions\n"
+            "Based on their knowledge and experience, they have to consider the following fundamental questions about the system:\n"
+            "1. Is there a generic application architecture that can act as a template for the system that is being designed?\n"
+            "2. How will the system be distributed across a number of cores or processors?\n"
+            "3. What architectural patterns or styles might be used?\n"
+            "4. What will be the fundamental approach used to structure the system?\n"
+            "5. How will the structural components in the system be decomposed into sub components?\n"
+            "6. What strategy will be used to control the operation of the components in the system?\n"
+            "7. What architectural organization is best for delivering the non-functional requirements of the system?\n"
+            "8. How will the architectural design be evaluated?\n"
+            "9. How should the architecture of the system be documented?"
+        )
+        compacted, kept = pruner.prune_chunk(query=query, text=text)
+        for i in range(1, 10):
+            assert f"{i}." in compacted, f"Missing question item {i} in compacted text"
+
+    def test_detached_enumerated_list_preservation(self):
+        """Verify that numbered list items with line breaks between numbers and text (common in PDF extraction) are preserved."""
+        pruner = SentencePruner(default_min_salience=0.15)
+        query = "what are the fundamental questions that one should consider about system regarding architectural design decisions"
+        text = (
+            "Based on their knowledge and experience, they have to consider the following fundamental questions about the system:\n\n"
+            "1.\nIs there a generic application architecture that can act as a template for the system that is being designed?\n\n"
+            "2.\nHow will the system be distributed across a number of cores or processors?\n\n"
+            "3.\nWhat architectural patterns or styles might be used?\n\n"
+            "4.\nWhat will be the fundamental approach used to structure the system?\n\n"
+            "5.\nHow will the structural components in the system be decomposed into sub components?\n\n"
+            "6.\nWhat strategy will be used to control the operation of the components in the system?\n\n"
+            "7.\nWhat architectural organization is best for delivering the non-functional requirements of the system?\n\n"
+            "8.\nHow will the architectural design be evaluated?\n\n"
+            "9.\nHow should the architecture of the system be documented?"
+        )
+        compacted, kept = pruner.prune_chunk(query=query, text=text)
+        for i in range(1, 10):
+            assert f"{i}." in compacted, (
+                f"Missing detached question item {i} in compacted text"
+            )
+
 
 class TestContextDeduplicator:
     """Tests chunk seam overlap detection and Jaccard deduplication."""
@@ -92,6 +135,14 @@ class TestContextDeduplicator:
 
         set_c = {"completely", "different", "words"}
         assert ContextDeduplicator.jaccard_similarity(set_a, set_c) == 0.0
+
+    def test_strip_seam_overlap_helper(self):
+        dedup = ContextDeduplicator()
+        prev_chunk = "Employees receive 20 days vacation. Requests must be submitted two weeks in advance."
+        curr_chunk = "Requests must be submitted two weeks in advance. Unused days roll over into next year."
+        stripped = dedup.strip_seam_overlap(prev_chunk, curr_chunk)
+        assert "Unused days roll over" in stripped
+        assert "two weeks in advance" not in stripped
 
 
 class TestLostInTheMiddleReorderer:
@@ -165,14 +216,53 @@ class TestTokenBudgetManager:
             },
         ]
 
-        context, accepted, total_tokens = mgr.fit_within_budget(candidates, max_budget=60)
+        context, accepted, total_tokens = mgr.fit_within_budget(
+            candidates, max_budget=60
+        )
         assert total_tokens <= 60
         assert len(accepted) < len(candidates)
         assert "[Doc 1, Chunk 1]" in context
 
+    def test_adaptive_budget_by_intent(self):
+        mgr = TokenBudgetManager()
+        assert mgr.get_adaptive_budget("FACTUAL", max_budget=4000) == 700
+        assert mgr.get_adaptive_budget("COMPARISON", max_budget=4000) == 2000
+        assert mgr.get_adaptive_budget("SUMMARY", max_budget=4000) == 3500
+        assert mgr.get_adaptive_budget(None, max_budget=4000) == 4000
+
 
 class TestContextCompactorIntegration:
     """Tests master coordinator integrating pruning, deduplication, U-shaped reordering, and budgeting."""
+
+    def test_query_relevant_math_survives_into_final_prompt_context(self):
+        chunk = RerankedChunk(
+            chunk_id="rsa_chunk",
+            content=(
+                "RSA public and private keys use prime numbers p and q.\n"
+                "n = p * q\n"
+                "The RSA encryption formula uses plaintext m and public exponent e.\n"
+                "c = m^e mod n\n"
+                "The RSA decryption formula uses private exponent d.\n"
+                "m = c^d mod n\n"
+                "Office air conditioning operates daily."
+            ),
+            document_id="doc_rsa",
+            chunk_index=0,
+            metadata={"source": "rsa_notes.pdf", "page": 1},
+            rerank_score=0.95,
+            raw_score=5.0,
+            rerank_position=1,
+        )
+
+        result = ContextCompactor().compact(
+            query="RSA encryption and decryption formulas",
+            chunks=[chunk],
+        )
+
+        assert "n = p * q" in result.formatted_prompt_context
+        assert "c = m^e mod n" in result.formatted_prompt_context
+        assert "m = c^d mod n" in result.formatted_prompt_context
+        assert "air conditioning" not in result.formatted_prompt_context
 
     @pytest.fixture
     def sample_reranked_chunks(self) -> list[RerankedChunk]:
@@ -182,7 +272,11 @@ class TestContextCompactorIntegration:
                 content="Full-time employees receive 20 days of paid vacation annually. Office chairs are ergonomically designed.",
                 document_id="doc_leave",
                 chunk_index=0,
-                metadata={"source": "leave_policy.pdf", "page": 1, "section": "Vacation"},
+                metadata={
+                    "source": "leave_policy.pdf",
+                    "page": 1,
+                    "section": "Vacation",
+                },
                 rerank_score=0.92,
                 raw_score=4.2,
                 rerank_position=1,
@@ -192,7 +286,11 @@ class TestContextCompactorIntegration:
                 content="Vacation time accrues on a monthly basis starting from day one. Office chairs are ergonomically designed.",
                 document_id="doc_leave",
                 chunk_index=1,
-                metadata={"source": "leave_policy.pdf", "page": 1, "section": "Vacation"},
+                metadata={
+                    "source": "leave_policy.pdf",
+                    "page": 1,
+                    "section": "Vacation",
+                },
                 rerank_score=0.85,
                 raw_score=3.1,
                 rerank_position=2,
@@ -202,7 +300,11 @@ class TestContextCompactorIntegration:
                 content="Sick leave provides up to 10 days of paid medical leave per calendar year.",
                 document_id="doc_sick",
                 chunk_index=0,
-                metadata={"source": "sick_policy.pdf", "page": 2, "section": "Sick Leave"},
+                metadata={
+                    "source": "sick_policy.pdf",
+                    "page": 2,
+                    "section": "Sick Leave",
+                },
                 rerank_score=0.70,
                 raw_score=1.8,
                 rerank_position=3,
@@ -274,9 +376,15 @@ class TestFullContextPipelineWithIndexes:
         from src.retrieval.hybrid import HybridRetriever
 
         hybrid = HybridRetriever(index_manager=manager)
-        retrieval_res = hybrid.retrieve(query="How much vacation leave do staff receive?")
-        ranked_context = default_reranker.rerank_retrieval_response(retrieval_res, top_n=3)
-        optimized_context = default_context_compactor.compact_ranked_context(ranked_context)
+        retrieval_res = hybrid.retrieve(
+            query="How much vacation leave do staff receive?"
+        )
+        ranked_context = default_reranker.rerank_retrieval_response(
+            retrieval_res, top_n=3
+        )
+        optimized_context = default_context_compactor.compact_ranked_context(
+            ranked_context
+        )
 
         assert isinstance(optimized_context, OptimizedContext)
         assert len(optimized_context.evidence_items) >= 1
@@ -319,4 +427,4 @@ class TestContextAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ready"
-        assert data["default_token_budget"] == 1500
+        assert data["default_token_budget"] == 4000

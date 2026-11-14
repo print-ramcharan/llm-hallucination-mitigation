@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LLM Memory Sync</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      width: 320px;
+      background: #090d16;
+      color: #f1f5f9;
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge.offline {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    select, input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    .btn {
+      width: 100%;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      padding: 9px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #4338ca;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding: 6px 0;
+      border-top: 1px solid #1e293b;
+    }
+    .toggle-label {
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .status-msg {
+      margin-top: 10px;
+      font-size: 11px;
+      text-align: center;
+      min-height: 16px;
+    }
+    .status-msg.success { color: #34d399; }
+    .status-msg.error { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      <span>🧠 External Memory</span>
+    </div>
+    <span id="backend-status" class="badge">Connecting...</span>
+  </div>
+
+  <div class="form-group">
+    <label for="session-select">Active Session</label>
+    <select id="session-select">
+      <option value="">Loading sessions...</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="page-title">Page Title</label>
+    <input type="text" id="page-title" placeholder="Loading active page..." readonly />
+  </div>
+
+  <div class="form-group">
+    <label for="capture-text">Selection / Content Excerpt</label>
+    <textarea id="capture-text" rows="3" placeholder="Highlight text on page or click capture"></textarea>
+  </div>
+
+  <button id="capture-btn" class="btn">
+    <span>⚡ Sync to Episodic Memory</span>
+  </button>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Read Past Memory into QA</span>
+    <input type="checkbox" id="read-toggle" checked />
+  </div>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Write Interactions to Memory</span>
+    <input type="checkbox" id="write-toggle" checked />
+  </div>
+
+  <div id="status-msg" class="status-msg"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

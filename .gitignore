@@ -39,15 +39,24 @@ Thumbs.db
 # Large datasets
 data/raw/
 data/processed/
+data/documents/
+data/open_ragbench/
 
 # Models and vector indexes
 models/
 indexes/
+data/indexes/
+data/memory/
+data/auth/
 *.faiss
+*.db
 
 # Experiment outputs
 results/
 experiments/results/
+
+# Documentation and paper drafts
+docs/
 
 # Logs
 logs/

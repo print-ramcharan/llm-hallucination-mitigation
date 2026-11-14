@@ -25,7 +25,10 @@ class TestDocumentCleaner:
     def test_repair_soft_linebreaks(self):
         dirty = "This is a sentence that was\naccidentally wrapped across two\nlines by an extractor."
         cleaned = self.cleaner.clean_text(dirty)
-        assert cleaned == "This is a sentence that was accidentally wrapped across two lines by an extractor."
+        assert (
+            cleaned
+            == "This is a sentence that was accidentally wrapped across two lines by an extractor."
+        )
 
     def test_strip_page_numbers(self):
         samples = [
@@ -98,7 +101,11 @@ class TestDocumentCleaner:
         elements = [
             DocumentElement(id="el_0", element_type="heading", content="Leave Policy"),
             DocumentElement(id="el_1", element_type="heading", content="Leave Policy"),
-            DocumentElement(id="el_2", element_type="paragraph", content="Employees receive 20 days off."),
+            DocumentElement(
+                id="el_2",
+                element_type="paragraph",
+                content="Employees receive 20 days off.",
+            ),
         ]
         cleaned_els = self.cleaner.clean_elements(elements)
         assert len(cleaned_els) == 2
@@ -108,12 +115,42 @@ class TestDocumentCleaner:
     def test_remove_repeated_running_footers_and_headers(self):
         # 3-page document where each page has "Confidential - Company Internal" at the bottom
         elements = [
-            DocumentElement(id="el_0", element_type="paragraph", content="Page 1 content here.", page_number=1),
-            DocumentElement(id="el_1", element_type="paragraph", content="Confidential - Company Internal", page_number=1),
-            DocumentElement(id="el_2", element_type="paragraph", content="Page 2 content here.", page_number=2),
-            DocumentElement(id="el_3", element_type="paragraph", content="Confidential - Company Internal", page_number=2),
-            DocumentElement(id="el_4", element_type="paragraph", content="Page 3 content here.", page_number=3),
-            DocumentElement(id="el_5", element_type="paragraph", content="Confidential - Company Internal", page_number=3),
+            DocumentElement(
+                id="el_0",
+                element_type="paragraph",
+                content="Page 1 content here.",
+                page_number=1,
+            ),
+            DocumentElement(
+                id="el_1",
+                element_type="paragraph",
+                content="Confidential - Company Internal",
+                page_number=1,
+            ),
+            DocumentElement(
+                id="el_2",
+                element_type="paragraph",
+                content="Page 2 content here.",
+                page_number=2,
+            ),
+            DocumentElement(
+                id="el_3",
+                element_type="paragraph",
+                content="Confidential - Company Internal",
+                page_number=2,
+            ),
+            DocumentElement(
+                id="el_4",
+                element_type="paragraph",
+                content="Page 3 content here.",
+                page_number=3,
+            ),
+            DocumentElement(
+                id="el_5",
+                element_type="paragraph",
+                content="Confidential - Company Internal",
+                page_number=3,
+            ),
         ]
         cleaned_els = self.cleaner.clean_elements(elements)
         # Running footer should be stripped across all pages

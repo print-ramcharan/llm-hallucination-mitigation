@@ -1,8 +1,9 @@
-"""FAISS Vector Index for semantic similarity search with L2-normalized embeddings."""
+"""FAISS Vector Index for semantic similarity search with L2-normalized embeddings, supporting both Flat and HNSW indexing."""
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import faiss
@@ -14,20 +15,36 @@ from src.ingestion.models import DocumentChunk
 class FaissVectorIndex:
     """FAISS-backed vector index mapping chunks to dense embeddings.
 
-    Uses IndexFlatIP (Inner Product) which computes exact Cosine Similarity
-    when vectors are L2-normalized.
+    Supports both IndexFlatIP (exact cosine similarity) and IndexHNSWFlat
+    (approximate nearest neighbors with O(log N) search speed and >98% recall).
     """
 
-    def __init__(self, dimension: int = 384, storage_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        dimension: int = 384,
+        storage_dir: Path | None = None,
+        index_type: str | None = None,
+        hnsw_m: int = 32,
+        hnsw_ef_search: int = 64,
+        hnsw_ef_construction: int = 64,
+    ) -> None:
         self.dimension = dimension
         self.storage_dir = Path(storage_dir) if storage_dir else Path("data/indexes")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+
+        self.index_type = (
+            index_type
+            or os.environ.get("FAISS_INDEX_TYPE", "hnsw")
+        ).lower()
+        self.hnsw_m = hnsw_m
+        self.hnsw_ef_search = hnsw_ef_search
+        self.hnsw_ef_construction = hnsw_ef_construction
 
         self.index_path = self.storage_dir / "vector_index.faiss"
         self.map_path = self.storage_dir / "vector_id_map.json"
 
         # Internal FAISS index
-        self._index: faiss.Index = faiss.IndexFlatIP(self.dimension)
+        self._index: faiss.Index = self._build_empty_index()
         # Vector ID (0..N-1) -> chunk_id
         self._id_to_chunk: list[str] = []
         # doc_id -> list of chunk_ids
@@ -37,6 +54,17 @@ class FaissVectorIndex:
 
         # Automatically load existing index if present
         self.load()
+
+    def _build_empty_index(self) -> faiss.Index:
+        """Construct an empty FAISS index according to configured index_type."""
+        if self.index_type == "hnsw":
+            index = faiss.IndexHNSWFlat(
+                self.dimension, self.hnsw_m, faiss.METRIC_INNER_PRODUCT
+            )
+            index.hnsw.efSearch = self.hnsw_ef_search
+            index.hnsw.efConstruction = self.hnsw_ef_construction
+            return index
+        return faiss.IndexFlatIP(self.dimension)
 
     @property
     def total_vectors(self) -> int:
@@ -58,12 +86,16 @@ class FaissVectorIndex:
         # Append vectors to FAISS index
         self._index.add(vectors)
 
-        for chunk, vec in zip(chunks, vectors):
-            chunk_id = chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+        for chunk, vec in zip(chunks, vectors, strict=True):
+            chunk_id = (
+                chunk.metadata.get("chunk_id", chunk.id) if chunk.metadata else chunk.id
+            )
             doc_id = chunk.document_id
 
             self._id_to_chunk.append(chunk_id)
-            self._doc_to_chunks.setdefault(doc_id, []).append(chunk_id)
+            doc_chunks = self._doc_to_chunks.setdefault(doc_id, [])
+            if chunk_id not in doc_chunks:
+                doc_chunks.append(chunk_id)
             self._embeddings_cache[chunk_id] = vec
 
         self.save()
@@ -87,7 +119,7 @@ class FaissVectorIndex:
         distances, indices = self._index.search(q_vec, k)
 
         results: list[tuple[str, float]] = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for dist, idx in zip(distances[0], indices[0], strict=True):
             if idx != -1 and idx < len(self._id_to_chunk):
                 chunk_id = self._id_to_chunk[idx]
                 results.append((chunk_id, float(dist)))
@@ -113,7 +145,7 @@ class FaissVectorIndex:
                 new_vectors_list.append(self._embeddings_cache[cid])
 
         self._id_to_chunk = new_id_to_chunk
-        self._index = faiss.IndexFlatIP(self.dimension)
+        self._index = self._build_empty_index()
 
         if new_vectors_list:
             rebuilt_matrix = np.vstack(new_vectors_list).astype(np.float32)
@@ -128,6 +160,7 @@ class FaissVectorIndex:
             map_data = {
                 "id_to_chunk": self._id_to_chunk,
                 "doc_to_chunks": self._doc_to_chunks,
+                "index_type": self.index_type,
                 # Convert float arrays to lists for json persistence of cache
                 "embeddings": {
                     cid: vec.tolist() for cid, vec in self._embeddings_cache.items()
@@ -144,10 +177,13 @@ class FaissVectorIndex:
         if self.index_path.is_file() and self.map_path.is_file():
             try:
                 self._index = faiss.read_index(str(self.index_path))
-                with open(self.map_path, "r", encoding="utf-8") as f:
+                if hasattr(self._index, "hnsw"):
+                    self._index.hnsw.efSearch = self.hnsw_ef_search
+                with open(self.map_path, encoding="utf-8") as f:
                     map_data = json.load(f)
                     self._id_to_chunk = map_data.get("id_to_chunk", [])
                     self._doc_to_chunks = map_data.get("doc_to_chunks", {})
+                    self.index_type = map_data.get("index_type", self.index_type)
                     raw_emb = map_data.get("embeddings", {})
                     self._embeddings_cache = {
                         cid: np.array(vec, dtype=np.float32)
@@ -155,14 +191,14 @@ class FaissVectorIndex:
                     }
             except Exception as exc:
                 print(f"Warning: Failed to load FAISS index from disk: {exc}")
-                self._index = faiss.IndexFlatIP(self.dimension)
+                self._index = self._build_empty_index()
                 self._id_to_chunk = []
                 self._doc_to_chunks = {}
                 self._embeddings_cache = {}
 
     def clear(self) -> None:
         """Wipe the in-memory index and delete persisted files."""
-        self._index = faiss.IndexFlatIP(self.dimension)
+        self._index = self._build_empty_index()
         self._id_to_chunk = []
         self._doc_to_chunks = {}
         self._embeddings_cache = {}

@@ -66,7 +66,9 @@ class MarkdownParser(BaseParser):
         code_lang = ""
         el_idx = 0
 
-        def flush_current_block(element_type: str = "paragraph", extra_meta: dict | None = None):
+        def flush_current_block(
+            element_type: str = "paragraph", extra_meta: dict | None = None
+        ):
             nonlocal el_idx, current_block
             block_content = "\n".join(current_block).strip()
             if block_content:
@@ -89,7 +91,9 @@ class MarkdownParser(BaseParser):
                 if in_code_block:
                     # End of code block
                     current_block.append(line)
-                    flush_current_block(element_type="code", extra_meta={"language": code_lang})
+                    flush_current_block(
+                        element_type="code", extra_meta={"language": code_lang}
+                    )
                     in_code_block = False
                     code_lang = ""
                 else:

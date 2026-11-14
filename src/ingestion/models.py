@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class DocumentType(str, Enum):
     """Supported document formats."""
+
     PDF = "pdf"
     DOCX = "docx"
     TXT = "txt"
@@ -86,7 +87,20 @@ class DocumentChunk(BaseModel):
         default_factory=list, description="Sections/headings relevant to this chunk"
     )
     metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Custom metadata and provenance for this chunk"
+        default_factory=dict,
+        description="Custom metadata and provenance for this chunk",
+    )
+    parent_id: str | None = Field(
+        default=None,
+        description="Identifier of parent chunk if this is a granular child chunk",
+    )
+    parent_content: str | None = Field(
+        default=None,
+        description="Full text of parent chunk for small-to-big retrieval expansion",
+    )
+    is_child: bool = Field(
+        default=False,
+        description="True if this is a small child chunk referencing a larger parent",
     )
 
     def model_post_init(self, __context: Any) -> None:
@@ -96,20 +110,27 @@ class DocumentChunk(BaseModel):
             object.__setattr__(self, "word_count", len(self.content.split()))
         if not self.token_count and self.content:
             from src.chunking.tokenizer import count_tokens
+
             object.__setattr__(self, "token_count", count_tokens(self.content))
 
 
 class DocumentMetadata(BaseModel):
     """Metadata describing a parsed document."""
 
-    document_id: str = Field(..., description="Unique deterministic or generated identifier")
+    document_id: str = Field(
+        ..., description="Unique deterministic or generated identifier"
+    )
     source_name: str = Field(..., description="Original filename or document name")
     file_type: DocumentType = Field(..., description="Type of the original document")
     file_size_bytes: int = Field(default=0, description="File size in bytes")
     content_hash: str = Field(..., description="SHA-256 hash of extracted content")
-    char_count: int = Field(default=0, description="Total characters in extracted content")
+    char_count: int = Field(
+        default=0, description="Total characters in extracted content"
+    )
     word_count: int = Field(default=0, description="Total words in extracted content")
-    element_count: int = Field(default=0, description="Total number of structured elements/blocks")
+    element_count: int = Field(
+        default=0, description="Total number of structured elements/blocks"
+    )
     chunk_count: int = Field(default=0, description="Total number of chunks produced")
     page_count: int | None = Field(
         default=None, description="Total page count (for paginated documents like PDF)"
@@ -119,7 +140,8 @@ class DocumentMetadata(BaseModel):
         description="ISO-8601 creation timestamp",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Extra metadata extracted from file header/tags"
+        default_factory=dict,
+        description="Extra metadata extracted from file header/tags",
     )
 
 
@@ -130,7 +152,9 @@ class Document(BaseModel):
     reranking, and context degradation mitigation steps.
     """
 
-    id: str = Field(..., description="Unique document ID (matching metadata.document_id)")
+    id: str = Field(
+        ..., description="Unique document ID (matching metadata.document_id)"
+    )
     content: str = Field(..., description="Full consolidated normalized text content")
     metadata: DocumentMetadata = Field(..., description="Document-level metadata")
     elements: list[DocumentElement] = Field(
@@ -175,19 +199,26 @@ class Document(BaseModel):
         # Fix element IDs to reference doc_id if not already done
         updated_elements = []
         for idx, el in enumerate(cleaned_elements):
-            el_id = el.id if el.id and not el.id.startswith("temp_") else f"{doc_id}_el_{idx}"
-            updated_elements.append(
-                DocumentElement(
-                    id=el_id,
-                    element_type=el.element_type,
-                    content=el.content,
-                    page_number=el.page_number,
-                    section_title=el.section_title,
-                    char_count=len(el.content),
-                    word_count=len(el.content.split()),
-                    metadata=el.metadata,
-                )
+            el_id = (
+                el.id
+                if el.id and not el.id.startswith("temp_")
+                else f"{doc_id}_el_{idx}"
             )
+            if el.id == el_id:
+                updated_elements.append(el)
+            else:
+                updated_elements.append(
+                    DocumentElement(
+                        id=el_id,
+                        element_type=el.element_type,
+                        content=el.content,
+                        page_number=el.page_number,
+                        section_title=el.section_title,
+                        char_count=el.char_count or len(el.content),
+                        word_count=el.word_count or len(el.content.split()),
+                        metadata=el.metadata,
+                    )
+                )
 
         # 3. Generate semantic chunks with 50-token overlap and rich metadata
         explicit_type = extra_metadata.get("document_type") if extra_metadata else None
